@@ -10,18 +10,17 @@ export default function AddButtonWithCamera() {
   const setPhoto = useNewItemStore((s) => s.setPhoto);
 
   const openCamera = () => {
-    // Important: certains navigateurs refusent click() si input est "display:none"
     inputRef.current?.click();
   };
 
   return (
     <div className="w-full">
-      {/* Input "visually hidden" (pas display:none) pour compatibilité iOS */}
+      {/* Input "visually hidden" (pas display:none) pour compatibilité mobile */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="camera"
+        capture="environment"
         style={{
           position: "absolute",
           width: 1,
@@ -39,7 +38,7 @@ export default function AddButtonWithCamera() {
 
           setPhoto(file);
 
-          // reset input pour permettre de reprendre la même photo
+          // reset pour pouvoir reprendre la même photo
           e.currentTarget.value = "";
 
           router.push("/add");
