@@ -1,12 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { MyDriveItem, MyDriveListProps } from "@/features/mydrive/types";
 import MyDriveCard from "@/features/mydrive/components/MyDriveCard";
+// 👇 C'est ici qu'on importe depuis ton nouveau fichier "modify"
+import { updateDriveItemAction } from "@/features/mydrive/modify";
 
-export default function MyDriveGallery({ items }: MyDriveListProps) {
+export default function MyDriveGallery({ items: initialItems }: MyDriveListProps) {
+  const [items, setItems] = useState<MyDriveItem[]>(initialItems);
   const [size, setSize] = useState<number>(50);
   const [openItem, setOpenItem] = useState<MyDriveItem | null>(null);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const imageHeightClass = useMemo(() => {
     if (size <= 33) return "h-36 md:h-40";
@@ -19,6 +26,26 @@ export default function MyDriveGallery({ items }: MyDriveListProps) {
     if (size <= 66) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
     return "grid-cols-1 md:grid-cols-2";
   }, [size]);
+
+  const handleUpdateItem = async (id: string, updates: Partial<MyDriveItem>) => {
+    // 1. Mise à jour visuelle immédiate (Optimistic UI)
+    const previousItems = [...items];
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
+      )
+    );
+
+    try {
+      // 2. Sauvegarde réelle via ton fichier modify.ts
+      await updateDriveItemAction(id, updates);
+      console.log("✅ Sauvegardé en BDD");
+    } catch (error) {
+      console.error("❌ Erreur sauvegarde", error);
+      setItems(previousItems); // On annule si erreur
+      alert("Erreur lors de la sauvegarde.");
+    }
+  };
 
   return (
     <>
@@ -39,7 +66,7 @@ export default function MyDriveGallery({ items }: MyDriveListProps) {
               max={100}
               value={size}
               onChange={(e) => setSize(Number(e.target.value))}
-              className="w-44"
+              className="w-44 cursor-pointer"
             />
           </div>
         </div>
@@ -52,6 +79,7 @@ export default function MyDriveGallery({ items }: MyDriveListProps) {
               item={item}
               imageHeightClass={imageHeightClass}
               onOpen={setOpenItem}
+              onUpdate={handleUpdateItem}
             />
           ))}
         </div>
