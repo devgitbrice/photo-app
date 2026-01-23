@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import type { MyDriveItem, MyDriveListProps } from "@/features/mydrive/types";
 import MyDriveCard from "@/features/mydrive/components/MyDriveCard";
-import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay"; // 👈 Import du nouveau fichier
+import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay";
 import { updateDriveItemAction } from "@/features/mydrive/modify";
 
 export default function MyDriveGallery({ items: initialItems }: MyDriveListProps) {
@@ -29,7 +29,7 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
     return "grid-cols-1 md:grid-cols-2";
   }, [size]);
 
-  // Ouverture : on trouve l'index de l'item cliqué
+  // Ouverture
   const handleOpen = (item: MyDriveItem) => {
     const index = items.findIndex((i) => i.id === item.id);
     setSelectedIndex(index);
@@ -54,9 +54,20 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
     }
   };
 
+  // Liste de tes liens
+  const myLinks = [
+    { name: "Vercel", url: "https://vercel.com/bricems-projects/photo-app" },
+    { name: "GitHub", url: "https://github.com/devgitbrice/photo-app" },
+    { name: "Formation", url: "https://formations-seven.vercel.app" },
+    { name: "Muxeo", url: "https://muxeo.vercel.app/" },
+    { name: "Fullcrea", url: "https://fullcrea.vercel.app/" },
+    { name: "BriceGPT", url: "https://bricegpt.vercel.app/" },
+    { name: "ToutesMesApps", url: "https://toutes-mes-apps.vercel.app/" },
+  ];
+
   return (
     <>
-      <section className="space-y-4">
+      <section className="space-y-4 min-h-[80vh] flex flex-col">
         {/* Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm opacity-70">
@@ -79,7 +90,7 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
         </div>
 
         {/* Grid */}
-        <div className={`grid gap-4 ${gridClass}`}>
+        <div className={`grid gap-4 ${gridClass} flex-1`}>
           {items.map((item) => (
             <MyDriveCard
               key={item.id}
@@ -90,10 +101,29 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
             />
           ))}
         </div>
+
+        {/* 👇 NOUVEAU : Footer avec tes liens */}
+        <footer className="mt-12 pt-8 pb-4 border-t border-neutral-800">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
+            {myLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-neutral-500 hover:text-white transition-colors hover:underline underline-offset-4"
+              >
+                {link.name}
+              </a>
+            ))}
+          </div>
+          <div className="text-center mt-4 text-xs text-neutral-700">
+            © {new Date().getFullYear()} MyDrive Ecosystem
+          </div>
+        </footer>
       </section>
 
-      {/* Le composant séparé gère maintenant tout l'affichage plein écran 
-      */}
+      {/* Overlay Swipeable */}
       {selectedIndex >= 0 && (
         <SwipeableOverlay
           items={items}
