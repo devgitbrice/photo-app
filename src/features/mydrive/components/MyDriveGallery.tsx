@@ -1,20 +1,77 @@
-import type { MyDriveListProps } from "@/features/mydrive/types";
+"use client";
+
+import { useMemo, useState } from "react";
+import type { MyDriveItem, MyDriveListProps } from "@/features/mydrive/types";
 import MyDriveCard from "@/features/mydrive/components/MyDriveCard";
 
 export default function MyDriveGallery({ items }: MyDriveListProps) {
-  return (
-    <section className="space-y-4">
-      {/* Petite info */}
-      <div className="text-sm opacity-70">
-        {items.length} élément{items.length > 1 ? "s" : ""}
-      </div>
+  const [size, setSize] = useState<number>(50);
+  const [openItem, setOpenItem] = useState<MyDriveItem | null>(null);
 
-      {/* Grid responsive (mobile -> 1 colonne, tablette -> 2, desktop -> 3) */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <MyDriveCard key={item.id} item={item} />
-        ))}
-      </div>
-    </section>
+  const imageHeightClass = useMemo(() => {
+    if (size <= 33) return "h-36 md:h-40";
+    if (size <= 66) return "h-48 md:h-56";
+    return "h-64 md:h-72";
+  }, [size]);
+
+  const gridClass = useMemo(() => {
+    if (size <= 33) return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+    if (size <= 66) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+    return "grid-cols-1 md:grid-cols-2";
+  }, [size]);
+
+  return (
+    <>
+      <section className="space-y-4">
+        {/* Controls */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm opacity-70">
+            {items.length} élément{items.length > 1 ? "s" : ""}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium whitespace-nowrap">
+              Taille images
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={size}
+              onChange={(e) => setSize(Number(e.target.value))}
+              className="w-44"
+            />
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div className={`grid gap-4 ${gridClass}`}>
+          {items.map((item) => (
+            <MyDriveCard
+              key={item.id}
+              item={item}
+              imageHeightClass={imageHeightClass}
+              onOpen={setOpenItem}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Fullscreen overlay */}
+      {openItem && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 p-4 flex items-center justify-center"
+          onClick={() => setOpenItem(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={openItem.image_url}
+            alt={openItem.title}
+            className="w-full max-h-[85dvh] object-contain rounded-2xl cursor-zoom-out"
+            onClick={() => setOpenItem(null)}
+          />
+        </div>
+      )}
+    </>
   );
 }
