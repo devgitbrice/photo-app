@@ -3,13 +3,15 @@
 import { useMemo, useState, useEffect } from "react";
 import type { MyDriveItem, MyDriveListProps } from "@/features/mydrive/types";
 import MyDriveCard from "@/features/mydrive/components/MyDriveCard";
-// 👇 C'est ici qu'on importe depuis ton nouveau fichier "modify"
+import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay"; // 👈 Import du nouveau fichier
 import { updateDriveItemAction } from "@/features/mydrive/modify";
 
 export default function MyDriveGallery({ items: initialItems }: MyDriveListProps) {
   const [items, setItems] = useState<MyDriveItem[]>(initialItems);
   const [size, setSize] = useState<number>(50);
-  const [openItem, setOpenItem] = useState<MyDriveItem | null>(null);
+  
+  // -1 = fermé, sinon index de l'image ouverte
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
   useEffect(() => {
     setItems(initialItems);
@@ -27,8 +29,14 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
     return "grid-cols-1 md:grid-cols-2";
   }, [size]);
 
+  // Ouverture : on trouve l'index de l'item cliqué
+  const handleOpen = (item: MyDriveItem) => {
+    const index = items.findIndex((i) => i.id === item.id);
+    setSelectedIndex(index);
+  };
+
+  // Update Action
   const handleUpdateItem = async (id: string, updates: Partial<MyDriveItem>) => {
-    // 1. Mise à jour visuelle immédiate (Optimistic UI)
     const previousItems = [...items];
     setItems((prevItems) =>
       prevItems.map((item) =>
@@ -37,12 +45,11 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
     );
 
     try {
-      // 2. Sauvegarde réelle via ton fichier modify.ts
       await updateDriveItemAction(id, updates);
       console.log("✅ Sauvegardé en BDD");
     } catch (error) {
       console.error("❌ Erreur sauvegarde", error);
-      setItems(previousItems); // On annule si erreur
+      setItems(previousItems);
       alert("Erreur lors de la sauvegarde.");
     }
   };
@@ -78,27 +85,22 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
               key={item.id}
               item={item}
               imageHeightClass={imageHeightClass}
-              onOpen={setOpenItem}
+              onOpen={handleOpen}
               onUpdate={handleUpdateItem}
             />
           ))}
         </div>
       </section>
 
-      {/* Fullscreen overlay */}
-      {openItem && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 p-4 flex items-center justify-center"
-          onClick={() => setOpenItem(null)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={openItem.image_url}
-            alt={openItem.title}
-            className="w-full max-h-[85dvh] object-contain rounded-2xl cursor-zoom-out"
-            onClick={() => setOpenItem(null)}
-          />
-        </div>
+      {/* Le composant séparé gère maintenant tout l'affichage plein écran 
+      */}
+      {selectedIndex >= 0 && (
+        <SwipeableOverlay
+          items={items}
+          selectedIndex={selectedIndex}
+          onClose={() => setSelectedIndex(-1)}
+          onNavigate={setSelectedIndex}
+        />
       )}
     </>
   );
