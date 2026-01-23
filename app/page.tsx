@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AddButtonWithCamera from "@/components/AddButtonWithCamera";
 
 export default function HomePage() {
   return (
@@ -9,12 +9,7 @@ export default function HomePage() {
           Ajoute une photo depuis l’appareil, puis renseigne un titre et une description.
         </p>
 
-        <Link
-          href="/add"
-          className="block w-full rounded-2xl px-6 py-5 text-lg font-semibold shadow-sm border"
-        >
-          AJOUTER
-        </Link>
+        <AddButtonWithCamera />
       </div>
     </main>
   );
