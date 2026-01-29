@@ -3,6 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import type { MyDriveItem } from "@/features/mydrive/types";
 
+function filenameFromUrl(url: string, fallbackId: string) {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split("/").pop();
+    return last && last.length > 0 ? last : `${fallbackId}.jpg`;
+  } catch {
+    return `${fallbackId}.jpg`;
+  }
+}
+
 type Props = {
   items: MyDriveItem[];
   selectedIndex: number;
@@ -124,13 +134,23 @@ export default function SwipeableOverlay({
         {selectedIndex + 1} / {items.length}
       </div>
 
-      {/* Bouton fermer */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 text-white/50 hover:text-white text-2xl z-20 p-2"
-      >
-        ✕
-      </button>
+      {/* Boutons en haut à droite */}
+      <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
+        <a
+          href={currentItem.image_url}
+          download={filenameFromUrl(currentItem.image_url, currentItem.id)}
+          className="text-white/50 hover:text-white text-sm px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Télécharger
+        </a>
+        <button
+          onClick={onClose}
+          className="text-white/50 hover:text-white text-2xl p-2"
+        >
+          ✕
+        </button>
+      </div>
 
       {/* Layout Mobile: Image centrée avec titre en bas */}
       <div className="md:hidden w-full h-full flex flex-col items-center justify-center p-2">
