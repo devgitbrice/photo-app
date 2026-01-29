@@ -13,6 +13,10 @@ function filenameFromUrl(url: string, fallbackId: string) {
   }
 }
 
+function isPdf(url: string): boolean {
+  return url.toLowerCase().endsWith('.pdf');
+}
+
 type Props = {
   items: MyDriveItem[];
   selectedIndex: number;
@@ -217,7 +221,7 @@ export default function SwipeableOverlay({
           <img
             src={currentItem.image_url}
             alt={currentItem.title}
-            className="max-w-full max-h-[85dvh] object-contain rounded shadow-2xl select-none"
+            className={`max-w-full max-h-[85dvh] object-contain rounded shadow-2xl select-none ${isPdf(currentItem.image_url) ? 'bg-white' : ''}`}
             onClick={(e) => e.stopPropagation()}
             draggable={false}
           />
@@ -253,7 +257,7 @@ export default function SwipeableOverlay({
           <img
             src={currentItem.image_url}
             alt={currentItem.title}
-            className="max-w-full max-h-[90vh] object-contain rounded shadow-2xl select-none"
+            className={`max-w-full max-h-[90vh] object-contain rounded shadow-2xl select-none ${isPdf(currentItem.image_url) ? 'bg-white' : ''}`}
             onClick={(e) => e.stopPropagation()}
             draggable={false}
           />
