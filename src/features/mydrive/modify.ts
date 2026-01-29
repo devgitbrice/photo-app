@@ -22,6 +22,60 @@ export async function updateDriveItemAction(id: string, updates: { title?: strin
   revalidatePath("/app/mydrive");
 }
 
+export async function replaceImageAction(id: string, imagePath: string, imageData: string) {
+  // imageData est un base64 data URL
+  const base64Data = imageData.split(",")[1];
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Supprimer l'ancien fichier
+  const { error: deleteError } = await supabase.storage
+    .from("MyDrive")
+    .remove([imagePath]);
+
+  if (deleteError) {
+    console.error("Erreur suppression ancien fichier:", deleteError);
+    throw new Error("Erreur lors de la suppression de l'ancien fichier");
+  }
+
+  // Upload le nouveau fichier avec le même chemin
+  const { error: uploadError } = await supabase.storage
+    .from("MyDrive")
+    .upload(imagePath, bytes, {
+      upsert: true,
+      contentType: "image/jpeg",
+      cacheControl: "3600",
+    });
+
+  if (uploadError) {
+    console.error("Erreur upload nouveau fichier:", uploadError);
+    throw new Error("Erreur lors de l'upload du nouveau fichier");
+  }
+
+  // Récupérer la nouvelle URL publique (avec un cache buster)
+  const { data } = supabase.storage.from("MyDrive").getPublicUrl(imagePath);
+  const newUrl = data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
+
+  // Mettre à jour l'URL dans la base de données pour forcer le refresh du cache
+  if (newUrl) {
+    const { error: updateError } = await supabase
+      .from("MyDrive")
+      .update({ image_url: newUrl })
+      .eq("id", id);
+
+    if (updateError) {
+      console.error("Erreur update URL:", updateError);
+    }
+  }
+
+  revalidatePath("/app/mydrive");
+
+  return { success: true, newUrl };
+}
+
 export async function deleteDriveItemAction(id: string, imagePath: string) {
   // Supprimer le fichier du storage
   const { error: storageError } = await supabase.storage
