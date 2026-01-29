@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { MyDriveItem } from "@/features/mydrive/types";
+import ImageEditor from "./ImageEditor";
+import { replaceImageAction } from "@/features/mydrive/modify";
 
 function filenameFromUrl(url: string, fallbackId: string) {
   try {
@@ -49,6 +51,10 @@ export default function SwipeableOverlay({
   const [obsValue, setObsValue] = useState(currentItem?.observation || "");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // États pour l'éditeur d'image
+  const [editorMode, setEditorMode] = useState<"crop" | "rotate" | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Synchronisation quand l'item change
   useEffect(() => {
@@ -134,9 +140,63 @@ export default function SwipeableOverlay({
     }
   };
 
+  // Fonction pour sauvegarder l'image éditée
+  const handleSaveEditedImage = async (blob: Blob) => {
+    if (!currentItem) return;
+
+    setIsSaving(true);
+    try {
+      // Convertir le blob en base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result as string;
+
+        try {
+          const result = await replaceImageAction(
+            currentItem.id,
+            currentItem.image_path,
+            base64Data
+          );
+
+          if (result.success && result.newUrl && onUpdate) {
+            onUpdate(currentItem.id, { image_url: result.newUrl } as Partial<MyDriveItem>);
+          }
+
+          setEditorMode(null);
+          // Forcer le rechargement de la page pour voir la nouvelle image
+          window.location.reload();
+        } catch (error) {
+          console.error("Erreur lors de la sauvegarde:", error);
+          alert("Erreur lors de la sauvegarde de l'image");
+        } finally {
+          setIsSaving(false);
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error("Erreur:", error);
+      setIsSaving(false);
+    }
+  };
+
+  // Vérifier si c'est une image (pas un PDF)
+  const isImage = currentItem && !isPdf(currentItem.image_url);
+
   if (!currentItem) return null;
 
   const downloadName = filenameFromUrl(currentItem.image_url, currentItem.id);
+
+  // Afficher l'éditeur d'image si actif
+  if (editorMode && isImage) {
+    return (
+      <ImageEditor
+        imageUrl={currentItem.image_url}
+        mode={editorMode}
+        onSave={handleSaveEditedImage}
+        onCancel={() => setEditorMode(null)}
+      />
+    );
+  }
 
   return (
     <div
@@ -228,26 +288,51 @@ export default function SwipeableOverlay({
         </div>
         <div className="absolute bottom-8 text-white text-center px-4 max-w-2xl">
           <h2 className="text-lg font-semibold mb-3">{currentItem.title}</h2>
-          <a
-            href={currentItem.image_url}
-            download={downloadName}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-block rounded-lg border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-black shadow-sm backdrop-blur hover:bg-white transition-colors"
-          >
-            Télécharger
-          </a>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            {/* Boutons d'édition d'image (seulement pour les images, pas les PDFs) */}
+            {isImage && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditorMode("crop");
+                  }}
+                  className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur transition-colors"
+                >
+                  Rogner
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditorMode("rotate");
+                  }}
+                  className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur transition-colors"
+                >
+                  Pivoter
+                </button>
+              </>
+            )}
+            <a
+              href={currentItem.image_url}
+              download={downloadName}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-lg border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-black shadow-sm backdrop-blur hover:bg-white transition-colors"
+            >
+              Télécharger
+            </a>
+          </div>
         </div>
       </div>
 
       {/* Layout Desktop/Tablet: Split View */}
       <div className="hidden md:flex w-full h-full">
         {/* Moitié gauche - Image */}
-        <div className="w-1/2 h-full flex items-center justify-center relative p-4">
+        <div className="w-1/2 h-full flex flex-col items-center justify-center relative p-4">
           {/* Flèche Gauche */}
           {selectedIndex > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); goPrev(); }}
-              className="absolute left-4 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors z-10"
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors z-10"
             >
               ←
             </button>
@@ -257,16 +342,40 @@ export default function SwipeableOverlay({
           <img
             src={currentItem.image_url}
             alt={currentItem.title}
-            className={`max-w-full max-h-[90vh] object-contain rounded shadow-2xl select-none ${isPdf(currentItem.image_url) ? 'bg-white' : ''}`}
+            className={`max-w-full max-h-[75vh] object-contain rounded shadow-2xl select-none ${isPdf(currentItem.image_url) ? 'bg-white' : ''}`}
             onClick={(e) => e.stopPropagation()}
             draggable={false}
           />
+
+          {/* Boutons d'édition sous l'image (seulement pour les images) */}
+          {isImage && (
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditorMode("crop");
+                }}
+                className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur transition-colors"
+              >
+                Rogner
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditorMode("rotate");
+                }}
+                className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur transition-colors"
+              >
+                Pivoter
+              </button>
+            </div>
+          )}
 
           {/* Flèche Droite */}
           {selectedIndex < items.length - 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); goNext(); }}
-              className="absolute right-4 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors z-10"
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors z-10"
             >
               →
             </button>
