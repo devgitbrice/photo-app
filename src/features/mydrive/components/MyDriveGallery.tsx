@@ -130,6 +130,7 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
           selectedIndex={selectedIndex}
           onClose={() => setSelectedIndex(-1)}
           onNavigate={setSelectedIndex}
+          onUpdate={handleUpdateItem}
         />
       )}
     </>
