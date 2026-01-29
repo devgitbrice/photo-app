@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import type { MyDriveItem, MyDriveListProps } from "@/features/mydrive/types";
 import MyDriveCard from "@/features/mydrive/components/MyDriveCard";
 import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay";
-import { updateDriveItemAction } from "@/features/mydrive/modify";
+import { updateDriveItemAction, deleteDriveItemAction } from "@/features/mydrive/modify";
 
 export default function MyDriveGallery({ items: initialItems }: MyDriveListProps) {
   const [items, setItems] = useState<MyDriveItem[]>(initialItems);
@@ -63,6 +63,35 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
       console.error("❌ Erreur sauvegarde", error);
       setItems(previousItems);
       alert("Erreur lors de la sauvegarde.");
+    }
+  };
+
+  // Delete Action
+  const handleDeleteItem = async (id: string, imagePath: string) => {
+    const previousItems = [...items];
+    const deletedIndex = items.findIndex((item) => item.id === id);
+
+    // Supprimer de l'état local
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+
+    // Ajuster l'index sélectionné
+    if (selectedIndex >= 0) {
+      if (items.length <= 1) {
+        // Dernier item, fermer l'overlay
+        setSelectedIndex(-1);
+      } else if (selectedIndex >= deletedIndex && selectedIndex > 0) {
+        // Reculer d'un cran si on supprime l'item actuel ou un précédent
+        setSelectedIndex(selectedIndex - 1);
+      }
+    }
+
+    try {
+      await deleteDriveItemAction(id, imagePath);
+      console.log("✅ Document supprimé");
+    } catch (error) {
+      console.error("❌ Erreur suppression", error);
+      setItems(previousItems);
+      alert("Erreur lors de la suppression.");
     }
   };
 
@@ -231,6 +260,7 @@ export default function MyDriveGallery({ items: initialItems }: MyDriveListProps
           onClose={() => setSelectedIndex(-1)}
           onNavigate={setSelectedIndex}
           onUpdate={handleUpdateItem}
+          onDelete={handleDeleteItem}
         />
       )}
     </>

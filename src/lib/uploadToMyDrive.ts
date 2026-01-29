@@ -13,6 +13,7 @@ function getSafeExtension(file: File) {
     "image/webp": "webp",
     "image/heic": "heic",
     "image/heif": "heif",
+    "application/pdf": "pdf",
   };
   return byMime[file.type] ?? "jpg";
 }

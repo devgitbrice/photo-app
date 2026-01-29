@@ -19,6 +19,7 @@ type Props = {
   onClose: () => void;
   onNavigate: (newIndex: number) => void;
   onUpdate?: (id: string, updates: Partial<MyDriveItem>) => void;
+  onDelete?: (id: string, imagePath: string) => void;
 };
 
 export default function SwipeableOverlay({
@@ -27,6 +28,7 @@ export default function SwipeableOverlay({
   onClose,
   onNavigate,
   onUpdate,
+  onDelete,
 }: Props) {
   // --- Gestion du Swipe Tactile ---
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -42,6 +44,8 @@ export default function SwipeableOverlay({
   const [isEditingObs, setIsEditingObs] = useState(false);
   const [obsValue, setObsValue] = useState(currentItem?.observation || "");
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // Synchronisation quand l'item change
   useEffect(() => {
     if (currentItem) {
@@ -49,6 +53,7 @@ export default function SwipeableOverlay({
       setObsValue(currentItem.observation || "");
       setIsEditingTitle(false);
       setIsEditingObs(false);
+      setShowDeleteConfirm(false);
     }
   }, [currentItem]);
 
@@ -119,6 +124,12 @@ export default function SwipeableOverlay({
     }
   };
 
+  const handleDelete = () => {
+    if (onDelete && currentItem) {
+      onDelete(currentItem.id, currentItem.image_path);
+    }
+  };
+
   if (!currentItem) return null;
 
   const downloadName = filenameFromUrl(currentItem.image_url, currentItem.id);
@@ -136,13 +147,68 @@ export default function SwipeableOverlay({
         {selectedIndex + 1} / {items.length}
       </div>
 
-      {/* Bouton fermer */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 text-white/50 hover:text-white text-2xl z-20 p-2"
-      >
-        ✕
-      </button>
+      {/* Boutons en haut à droite */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+        {/* Bouton Supprimer */}
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteConfirm(true);
+            }}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/20 text-sm px-3 py-2 rounded-lg transition-colors"
+          >
+            Supprimer
+          </button>
+        )}
+        {/* Bouton fermer */}
+        <button
+          onClick={onClose}
+          className="text-white/50 hover:text-white text-2xl p-2"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Modal de confirmation de suppression */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteConfirm(false);
+          }}
+        >
+          <div
+            className="bg-neutral-900 rounded-xl p-6 max-w-sm mx-4 shadow-2xl border border-neutral-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Supprimer ce document ?
+            </h3>
+            <p className="text-neutral-400 text-sm mb-6">
+              Cette action est irréversible. Le document sera définitivement supprimé.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm text-neutral-300 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => {
+                  handleDelete();
+                  setShowDeleteConfirm(false);
+                }}
+                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Layout Mobile: Image centrée avec titre en bas */}
       <div className="md:hidden w-full h-full flex flex-col items-center justify-center p-2">
