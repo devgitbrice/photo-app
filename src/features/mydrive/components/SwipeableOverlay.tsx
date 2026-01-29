@@ -3,6 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import type { MyDriveItem } from "@/features/mydrive/types";
 
+function filenameFromUrl(url: string, fallbackId: string) {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split("/").pop();
+    return last && last.length > 0 ? last : `${fallbackId}.jpg`;
+  } catch {
+    return `${fallbackId}.jpg`;
+  }
+}
+
 type Props = {
   items: MyDriveItem[];
   selectedIndex: number;
@@ -111,6 +121,8 @@ export default function SwipeableOverlay({
 
   if (!currentItem) return null;
 
+  const downloadName = filenameFromUrl(currentItem.image_url, currentItem.id);
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm"
@@ -144,8 +156,16 @@ export default function SwipeableOverlay({
             draggable={false}
           />
         </div>
-        <div className="absolute bottom-8 text-white text-center px-4 max-w-2xl pointer-events-none">
-          <h2 className="text-lg font-semibold">{currentItem.title}</h2>
+        <div className="absolute bottom-8 text-white text-center px-4 max-w-2xl">
+          <h2 className="text-lg font-semibold mb-3">{currentItem.title}</h2>
+          <a
+            href={currentItem.image_url}
+            download={downloadName}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-block rounded-lg border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-black shadow-sm backdrop-blur hover:bg-white transition-colors"
+          >
+            Télécharger
+          </a>
         </div>
       </div>
 
@@ -248,13 +268,22 @@ export default function SwipeableOverlay({
             </div>
           </div>
 
-          {/* Métadonnées */}
+          {/* Métadonnées et Téléchargement */}
           <div className="mt-auto pt-6 border-t border-neutral-800">
-            <div className="text-xs text-neutral-500 space-y-1">
-              <p>ID: <span className="font-mono">{currentItem.id.slice(0, 8)}...</span></p>
-              <p>Créé le: {new Date(currentItem.created_at).toLocaleDateString("fr-FR", {
-                dateStyle: "long",
-              })}</p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-xs text-neutral-500 space-y-1">
+                <p>ID: <span className="font-mono">{currentItem.id.slice(0, 8)}...</span></p>
+                <p>Créé le: {new Date(currentItem.created_at).toLocaleDateString("fr-FR", {
+                  dateStyle: "long",
+                })}</p>
+              </div>
+              <a
+                href={currentItem.image_url}
+                download={downloadName}
+                className="rounded-lg border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-black shadow-sm backdrop-blur hover:bg-white transition-colors"
+              >
+                Télécharger
+              </a>
             </div>
           </div>
         </div>
