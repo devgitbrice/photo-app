@@ -20,6 +20,10 @@ function filenameFromUrl(url: string, fallbackId: string) {
   }
 }
 
+function isPdf(url: string): boolean {
+  return url.toLowerCase().endsWith('.pdf');
+}
+
 export default function MyDriveCard({
   item,
   imageHeightClass,
@@ -84,7 +88,7 @@ export default function MyDriveCard({
         <img
           src={item.image_url}
           alt={item.title}
-          className={`w-full ${imageHeightClass} object-cover bg-neutral-800 cursor-zoom-in transition-opacity hover:opacity-90`}
+          className={`w-full ${imageHeightClass} object-cover cursor-zoom-in transition-opacity hover:opacity-90 ${isPdf(item.image_url) ? 'bg-white' : 'bg-neutral-800'}`}
           loading="lazy"
           onDoubleClick={() => onOpen(item)}
           title="Double-clic pour agrandir l'image"
