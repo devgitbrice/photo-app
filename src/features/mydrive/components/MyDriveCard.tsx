@@ -90,15 +90,26 @@ export default function MyDriveCard({
           title="Double-clic pour agrandir l'image"
         />
 
-        {/* Bouton Télécharger (devient visible au survol) */}
-        <a
-          href={item.image_url}
-          download={downloadName}
-          className="absolute right-2 top-2 rounded-lg border border-neutral-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-black shadow-sm backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Télécharger
-        </a>
+        {/* Boutons Détail et Télécharger (deviennent visibles au survol) */}
+        <div className="absolute right-2 top-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(item);
+            }}
+            className="rounded-lg border border-neutral-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-black shadow-sm backdrop-blur hover:bg-white transition-colors"
+          >
+            Détail
+          </button>
+          <a
+            href={item.image_url}
+            download={downloadName}
+            className="rounded-lg border border-neutral-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-black shadow-sm backdrop-blur hover:bg-white transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Télécharger
+          </a>
+        </div>
       </div>
 
       {/* Contenu Texte */}
