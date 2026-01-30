@@ -7,8 +7,15 @@ export default function HomePage() {
       <div className="w-full max-w-sm text-center space-y-4">
         <h1 className="text-2xl font-semibold">Photo App</h1>
         <p className="text-sm opacity-80">
-          Ajoute une photo depuis l’appareil, puis renseigne un titre et une observation.
+          Ajoute une photo depuis l'appareil, puis renseigne un titre et une observation.
         </p>
+
+        <Link
+          href="/quickscan"
+          className="block w-full rounded-2xl px-6 py-5 text-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+        >
+          Quick Scan
+        </Link>
 
         <AddButtonWithCamera />
 
