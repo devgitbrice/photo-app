@@ -25,11 +25,8 @@ export async function updateDriveItemAction(id: string, updates: { title?: strin
 export async function replaceImageAction(id: string, imagePath: string, imageData: string) {
   // imageData est un base64 data URL
   const base64Data = imageData.split(",")[1];
-  const binaryString = atob(base64Data);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+  // Utiliser Buffer.from (Node.js) au lieu de atob (navigateur)
+  const bytes = Buffer.from(base64Data, "base64");
 
   // Supprimer l'ancien fichier
   const { error: deleteError } = await supabase.storage
