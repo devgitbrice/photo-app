@@ -175,10 +175,21 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     { name: "ToutesMesApps", url: "https://toutes-mes-apps.vercel.app/" },
   ];
 
-  // --- RENDU CARTE (SÉCURISÉ) ---
+
+
+
+
+
+
+
+
+
+
+
+// --- RENDU CARTE (SÉCURISÉ) ---
   const renderCardContent = (item: MyDriveItem) => {
-    // SÉCURITÉ : On nettoie l'URL avant de l'utiliser
-    const rawUrl = item.url ? item.url.trim() : "";
+    // SÉCURITÉ : On utilise image_url et non url
+    const rawUrl = item.image_url ? item.image_url.trim() : "";
     const validUrl = rawUrl.length > 0 ? rawUrl : null;
 
     return (
@@ -203,6 +214,21 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
                )}
             </div>
           )}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           {/* Badge Type */}
           {(item.doc_type || item.type === 'folder') && (
