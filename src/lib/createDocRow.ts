@@ -3,9 +3,13 @@
 import { supabase } from "@/lib/supabaseClient";
 import { revalidatePath } from "next/cache";
 
+// On définit les types autorisés
+type DocType = "doc" | "mindmap" | "table" | "presentation";
+
 type CreateDocInput = {
   title: string;
   content: string;
+  doc_type: DocType;
 };
 
 export async function createDocRow(input: CreateDocInput): Promise<string> {
@@ -17,7 +21,7 @@ export async function createDocRow(input: CreateDocInput): Promise<string> {
       observation: "",
       image_path: "",
       image_url: "",
-      doc_type: "doc",
+      doc_type: input.doc_type, // Type dynamique
     })
     .select("id")
     .single();
@@ -26,6 +30,6 @@ export async function createDocRow(input: CreateDocInput): Promise<string> {
     throw new Error(`DB insert failed: ${error.message}`);
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
   return data.id;
 }

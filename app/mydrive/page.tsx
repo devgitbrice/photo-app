@@ -2,7 +2,6 @@ import Link from "next/link";
 import { fetchMyDrive, fetchAllTags } from "@/features/mydrive/lib/fetchMyDrive";
 import MyDriveGallery from "@/features/mydrive/components/MyDriveGallery";
 
-// On empêche le prerender (Supabase + env vars)
 export const dynamic = "force-dynamic";
 
 export default async function MyDrivePage() {
@@ -10,42 +9,43 @@ export default async function MyDrivePage() {
 
   return (
     <main className="min-h-dvh p-6 space-y-6">
-      {/* Header */}
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">MyDrive</h1>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/newdoc"
-            className="rounded-2xl px-4 py-2 font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors"
-          >
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/newdoc" className="rounded-2xl px-4 py-2 font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
             Créer Doc
           </Link>
-          <Link
-            href="/"
-            className="rounded-2xl px-4 py-2 font-semibold border"
-          >
+          <Link href="/newmindmap" className="rounded-2xl px-4 py-2 font-semibold border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors">
+            Créer Mindmap
+          </Link>
+          <Link href="/newtable" className="rounded-2xl px-4 py-2 font-semibold border border-green-600 text-green-400 hover:bg-green-600 hover:text-white transition-colors">
+            Créer Table
+          </Link>
+          <Link href="/newpresentation" className="rounded-2xl px-4 py-2 font-semibold border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors">
+            Créer Présentation
+          </Link>
+          <Link href="/" className="rounded-2xl px-4 py-2 font-semibold border hover:bg-gray-100 transition-colors">
             Ajouter
           </Link>
         </div>
       </header>
 
-      {/* Empty state */}
       {items.length === 0 ? (
-        <div className="text-center space-y-4 opacity-80">
+        <div className="text-center space-y-4 opacity-80 mt-10">
           <p>Aucun document pour le moment.</p>
-          <div className="flex items-center justify-center gap-3">
-            <Link
-              href="/newdoc"
-              className="inline-block rounded-2xl px-6 py-3 font-semibold border border-blue-600 text-blue-400"
-            >
-              Créer un document
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/newdoc" className="rounded-2xl px-6 py-3 font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
+              Créer Doc
             </Link>
-            <Link
-              href="/"
-              className="inline-block rounded-2xl px-6 py-3 font-semibold border"
-            >
-              Ajouter un scan
+            <Link href="/newmindmap" className="rounded-2xl px-6 py-3 font-semibold border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors">
+              Créer Mindmap
+            </Link>
+            <Link href="/newtable" className="rounded-2xl px-6 py-3 font-semibold border border-green-600 text-green-400 hover:bg-green-600 hover:text-white transition-colors">
+              Créer Table
+            </Link>
+            <Link href="/newpresentation" className="rounded-2xl px-6 py-3 font-semibold border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors">
+              Créer Présentation
             </Link>
           </div>
         </div>
