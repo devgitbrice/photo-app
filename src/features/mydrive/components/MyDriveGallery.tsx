@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import type { MyDriveItem, MyDriveListProps, Tag } from "@/features/mydrive/types";
 import MyDriveCard from "@/features/mydrive/components/MyDriveCard";
 import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay";
@@ -70,6 +70,43 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     }
     return counts;
   }, [items]);
+
+  // Liste ordonnée des IDs de tag pour la navigation clavier (null = "Tous")
+  const tagIdList = useMemo<(string | null)[]>(
+    () => [null, ...allTags.map((t) => t.id)],
+    [allTags]
+  );
+
+  const navigateTag = useCallback(
+    (direction: "up" | "down") => {
+      const currentIndex = tagIdList.indexOf(selectedTagId);
+      const nextIndex =
+        direction === "down"
+          ? Math.min(currentIndex + 1, tagIdList.length - 1)
+          : Math.max(currentIndex - 1, 0);
+      setSelectedTagId(tagIdList[nextIndex]);
+    },
+    [tagIdList, selectedTagId]
+  );
+
+  // Flèches haut/bas pour naviguer entre les tags (sauf si overlay ouvert ou champ actif)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedIndex >= 0) return; // overlay ouvert
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        navigateTag("down");
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        navigateTag("up");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigateTag, selectedIndex]);
 
   // Ouverture
   const handleOpen = (item: MyDriveItem) => {
