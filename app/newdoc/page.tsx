@@ -68,16 +68,21 @@ export default function NewDocPage() {
       return;
     }
 
-    setStatus("saving");
-    try {
-      const docId = await createDocRow({
-        title: title.trim(),
-        content: content,
-      });
-      // Assigner les tags sélectionnés
-      for (const tag of selectedTags) {
-        await addTagToItemAction(docId, tag.id);
-      }
+
+
+
+
+
+  setStatus("saving");
+try {
+  const docId = await createDocRow({
+    title: title.trim(),
+    content: content,
+    doc_type: "doc", // <-- AJOUTE CETTE LIGNE ICI
+  });
+
+
+
 
       setStatus("success");
     } catch (e) {
