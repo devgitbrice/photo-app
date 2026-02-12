@@ -20,6 +20,13 @@ export default function HomePage() {
         <AddButtonWithCamera />
 
         <Link
+          href="/newdoc"
+          className="block w-full rounded-2xl px-6 py-4 font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors"
+        >
+          Créer Doc
+        </Link>
+
+        <Link
           href="/mydrive"
           className="block w-full rounded-2xl px-6 py-4 font-semibold border"
         >
