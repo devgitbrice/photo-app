@@ -3,7 +3,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { revalidatePath } from "next/cache";
 
-export async function updateDriveItemAction(id: string, updates: { title?: string; observation?: string }) {
+export async function updateDriveItemAction(id: string, updates: Record<string, string>) {
   
   // Note : On n'a plus besoin de faire "const supabase = createClient()" 
   // car on utilise l'instance 'supabase' importée ligne 4.
@@ -71,6 +71,76 @@ export async function replaceImageAction(id: string, imagePath: string, imageDat
   revalidatePath("/app/mydrive");
 
   return { success: true, newUrl };
+}
+
+export async function createTagAction(name: string) {
+  const trimmed = name.trim().toLowerCase();
+  if (!trimmed) throw new Error("Nom du tag vide");
+
+  // Upsert: si le tag existe déjà, on le récupère
+  const { data: existing } = await supabase
+    .from("tags")
+    .select("id, name, created_at")
+    .eq("name", trimmed)
+    .single();
+
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from("tags")
+    .insert({ name: trimmed })
+    .select("id, name, created_at")
+    .single();
+
+  if (error) {
+    console.error("Erreur création tag:", error);
+    throw new Error("Erreur lors de la création du tag");
+  }
+
+  revalidatePath("/app/mydrive");
+  return data;
+}
+
+export async function addTagToItemAction(mydriveId: string, tagId: string) {
+  const { error } = await supabase
+    .from("mydrive_tags")
+    .insert({ mydrive_id: mydriveId, tag_id: tagId });
+
+  if (error && !error.message.includes("duplicate")) {
+    console.error("Erreur ajout tag:", error);
+    throw new Error("Erreur lors de l'ajout du tag");
+  }
+
+  revalidatePath("/app/mydrive");
+}
+
+export async function removeTagFromItemAction(mydriveId: string, tagId: string) {
+  const { error } = await supabase
+    .from("mydrive_tags")
+    .delete()
+    .eq("mydrive_id", mydriveId)
+    .eq("tag_id", tagId);
+
+  if (error) {
+    console.error("Erreur suppression tag:", error);
+    throw new Error("Erreur lors de la suppression du tag");
+  }
+
+  revalidatePath("/app/mydrive");
+}
+
+export async function updateDriveContentAction(id: string, content: string) {
+  const { error } = await supabase
+    .from("MyDrive")
+    .update({ content })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Erreur update content:", error);
+    throw new Error("Erreur lors de la mise à jour du contenu");
+  }
+
+  revalidatePath("/app/mydrive");
 }
 
 export async function deleteDriveItemAction(id: string, imagePath: string) {
