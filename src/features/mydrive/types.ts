@@ -11,22 +11,18 @@ export type Tag = {
  * Représente une ligne de la table Supabase "MyDrive"
  * Supporte Scan, Doc, Mindmap, Table et Présentation
  */
-export type MyDriveItem = {
+export interface MyDriveItem {
   id: string;
-
   title: string;
-  observation: string; // Sert de description
-
-  image_path: string;
-  image_url: string;
-
-  content: string; // Contenu JSON ou HTML selon le type
-  doc_type: "scan" | "doc" | "mindmap" | "table" | "presentation";
-
-  created_at: string; // ISO string (timestamptz)
-
-  tags: Tag[];
-};
+  image_url: string;    // Vérifiez bien que c'est image_url
+  image_path?: string;
+  created_at: string;
+  observation?: string;
+  content?: string;
+  type: string;         // <--- AJOUTEZ CETTE LIGNE
+  doc_type?: string;    // <--- AJOUTEZ CETTE LIGNE SI ABSENTE
+  tags?: Tag[];
+}
 
 /**
  * Props communes pour les composants d'affichage MyDrive

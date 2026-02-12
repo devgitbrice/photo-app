@@ -188,8 +188,10 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
 
 // --- RENDU CARTE (SÉCURISÉ) ---
   const renderCardContent = (item: MyDriveItem) => {
-    // SÉCURITÉ : On utilise image_url et non url
-    const rawUrl = item.image_url ? item.image_url.trim() : "";
+    // On force le type en "any" temporairement pour éviter l'erreur de build
+    const itemData = item as any; 
+    
+    const rawUrl = itemData.image_url ? itemData.image_url.trim() : "";
     const validUrl = rawUrl.length > 0 ? rawUrl : null;
 
     return (
@@ -197,7 +199,6 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
         {/* Zone Image / Icône */}
         <div className={`${imageHeightClass} w-full bg-neutral-950 relative overflow-hidden flex items-center justify-center`}>
           
-          {/* Si validUrl existe, on affiche l'image, sinon l'icône */}
           {validUrl ? (
             <img
               src={validUrl}
@@ -205,9 +206,9 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
               className="w-full h-full object-cover transition-transform group-hover:scale-105"
             />
           ) : (
-            // FALLBACK : Icônes vectorielles
             <div className="flex flex-col items-center justify-center text-neutral-700 group-hover:text-blue-500 transition-colors">
-               {item.type === "folder" ? (
+               {/* Utilisation de itemData.type au lieu de item.type */}
+               {itemData.type === "folder" ? (
                   <svg className="w-16 h-16 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" /></svg>
                ) : (
                   <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -215,29 +216,14 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
             </div>
           )}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
           {/* Badge Type */}
-          {(item.doc_type || item.type === 'folder') && (
+          {(itemData.doc_type || itemData.type === 'folder') && (
               <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border shadow-sm ${
-                item.type === 'folder' 
+                itemData.type === 'folder' 
                   ? "bg-yellow-500/20 text-yellow-200 border-yellow-500/30" 
                   : "bg-blue-500/20 text-blue-200 border-blue-500/30"
               }`}>
-                {item.type === 'folder' ? 'DOSSIER' : item.doc_type}
+                {itemData.type === 'folder' ? 'DOSSIER' : itemData.doc_type}
               </div>
           )}
         </div>
@@ -248,22 +234,55 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
             {item.title}
           </h3>
           <div className="flex items-center justify-between text-[10px] text-neutral-500 uppercase tracking-wide">
-            {/* CORRECTION : suppressHydrationWarning ajouté ici */}
             <span suppressHydrationWarning>
               {item.created_at ? format(new Date(item.created_at), "dd MMM", { locale: fr }) : "-"}
             </span>
-            {item.tags && item.tags.length > 0 && (
-               <div className="flex gap-1">
-                 {item.tags.slice(0, 3).map((tag, idx) => (
-                   <span key={idx} className="w-2 h-2 rounded-full ring-1 ring-neutral-900" style={{ backgroundColor: tag.color }} title={tag.name} />
-                 ))}
-               </div>
-            )}
+
+
+
+
+
+
+            
+{item.tags && item.tags.length > 0 && (
+  <div className="flex gap-1">
+    {item.tags.slice(0, 3).map((tag, idx) => (
+      <span 
+        key={idx} 
+        className="w-2 h-2 rounded-full ring-1 ring-neutral-900" 
+        style={{ backgroundColor: (tag as any).color || '#555' }} 
+        title={(tag as any).name || ''} 
+      />
+    ))}
+  </div>
+)}
+
+
+
+
+
           </div>
         </div>
       </>
     );
   };
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   return (
     <>
@@ -344,13 +363,28 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
               filteredItems.map((item) => {
                 const wrapperClass = "group relative flex flex-col bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden hover:border-blue-500 transition-all hover:shadow-lg hover:shadow-blue-900/20 cursor-pointer";
                 
-                if (item.type === 'folder') {
-                    return (
-                        <Link key={item.id} href={`/mydrive/folder/${item.id}`} className={wrapperClass}>
-                            {renderCardContent(item)}
-                        </Link>
-                    );
-                }
+
+
+
+
+
+
+
+
+
+                if ((item as any).type === 'folder') {
+    return (
+        <Link key={item.id} href={`/mydrive/folder/${item.id}`} className={wrapperClass}>
+            {renderCardContent(item)}
+        </Link>
+    );
+}
+
+
+
+
+
+
                 
                 return (
                     <div key={item.id} onClick={() => handleOpen(item)} className={wrapperClass}>
