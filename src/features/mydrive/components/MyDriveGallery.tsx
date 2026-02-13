@@ -14,6 +14,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
   const [size, setSize] = useState<number>(50);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
   // Mise à jour des props si elles changent
@@ -38,9 +39,39 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     return "grid-cols-1 md:grid-cols-2";
   }, [size]);
 
+  // --- TYPES DE CONTENU ---
+  const contentTypes = [
+    { key: "doc", label: "Doc", color: "blue" },
+    { key: "python", label: "Python", color: "yellow" },
+    { key: "mindmap", label: "Mindmap", color: "purple" },
+    { key: "table", label: "Table", color: "green" },
+    { key: "presentation", label: "Présentation", color: "orange" },
+    { key: "scan", label: "PDF / Scan", color: "rose" },
+    { key: "photo", label: "Photo", color: "cyan" },
+  ];
+
+  const docTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      const itemData = item as any;
+      const type = itemData.doc_type || (itemData.image_url ? "photo" : null);
+      if (type) counts[type] = (counts[type] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
   // --- FILTRAGE ---
   const filteredItems = useMemo(() => {
     let result = items;
+    if (selectedDocType) {
+      result = result.filter((item) => {
+        const itemData = item as any;
+        if (selectedDocType === "photo") {
+          return !itemData.doc_type && itemData.image_url;
+        }
+        return itemData.doc_type === selectedDocType;
+      });
+    }
     if (selectedTagId) {
       result = result.filter((item) =>
         item.tags?.some((t) => t.id === selectedTagId)
@@ -55,7 +86,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
       );
     }
     return result;
-  }, [items, searchQuery, selectedTagId]);
+  }, [items, searchQuery, selectedTagId, selectedDocType]);
 
 
 
@@ -270,29 +301,63 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
   return (
     <>
       <div className="flex gap-6">
-        {allTags.length > 0 && (
-          <aside className="hidden md:block w-48 shrink-0">
-            <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-3">Tags</h3>
+        <aside className="hidden md:block w-48 shrink-0 space-y-6">
+          {/* FILTRE PAR TYPE */}
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-3">Type</h3>
             <nav className="space-y-1">
-              <button onClick={() => setSelectedTagId(null)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedTagId ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
+              <button onClick={() => setSelectedDocType(null)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedDocType ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
                 Tous ({items.length})
               </button>
-              {allTags.map((tag) => (
-                <button key={tag.id} onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between ${selectedTagId === tag.id ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
-                  <span>{tag.name}</span>
-                  <span className="opacity-60 text-xs py-0.5">({tagCounts[tag.id] || 0})</span>
-                </button>
-              ))}
+              {contentTypes.map((ct) => {
+                const count = docTypeCounts[ct.key] || 0;
+                if (count === 0) return null;
+                return (
+                  <button key={ct.key} onClick={() => setSelectedDocType(selectedDocType === ct.key ? null : ct.key)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between ${selectedDocType === ct.key ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
+                    <span>{ct.label}</span>
+                    <span className="opacity-60 text-xs py-0.5">({count})</span>
+                  </button>
+                );
+              })}
             </nav>
-          </aside>
-        )}
+          </div>
+
+          {/* FILTRE PAR TAG */}
+          {allTags.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-3">Tags</h3>
+              <nav className="space-y-1">
+                <button onClick={() => setSelectedTagId(null)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedTagId ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
+                  Tous
+                </button>
+                {allTags.map((tag) => (
+                  <button key={tag.id} onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between ${selectedTagId === tag.id ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
+                    <span>{tag.name}</span>
+                    <span className="opacity-60 text-xs py-0.5">({tagCounts[tag.id] || 0})</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
+        </aside>
 
         <section className="space-y-4 min-h-[80vh] flex flex-col flex-1 min-w-0">
           <div className="flex flex-col gap-3">
+            {/* Mobile: filtre par type */}
+            <div className="md:hidden overflow-x-auto pb-1">
+              <div className="flex gap-2 min-w-max">
+                <button onClick={() => setSelectedDocType(null)} className={`px-3 py-1.5 rounded-full text-sm ${!selectedDocType ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>Tous</button>
+                {contentTypes.map((ct) => (
+                  <button key={ct.key} onClick={() => setSelectedDocType(selectedDocType === ct.key ? null : ct.key)} className={`px-3 py-1.5 rounded-full text-sm ${selectedDocType === ct.key ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>{ct.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile: filtre par tag */}
             {allTags.length > 0 && (
               <div className="md:hidden overflow-x-auto pb-1">
                 <div className="flex gap-2 min-w-max">
-                  <button onClick={() => setSelectedTagId(null)} className={`px-3 py-1.5 rounded-full text-sm ${!selectedTagId ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>Tous</button>
+                  <button onClick={() => setSelectedTagId(null)} className={`px-3 py-1.5 rounded-full text-sm ${!selectedTagId ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>Tags: Tous</button>
                   {allTags.map((tag) => (
                     <button key={tag.id} onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)} className={`px-3 py-1.5 rounded-full text-sm ${selectedTagId === tag.id ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>{tag.name}</button>
                   ))}

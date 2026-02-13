@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createDocRow } from "@/lib/createDocRow";
 import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/modify";
@@ -40,6 +40,7 @@ function parseSlides(content: string): Slide[] {
 
 export default function PresentationEditor({ initialData }: PresentationEditorProps) {
   const router = useRouter();
+  const isEditMode = !!initialData?.id;
   const [docTitle, setDocTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.observation || "");
 
@@ -50,22 +51,52 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- AUTO-SAVE (edit mode only, debounce 1.5s) ---
+  const autoSave = useCallback(async () => {
+    if (!isEditMode || !docTitle.trim()) return;
+    setStatus("saving");
+    try {
+      await updateDriveItemAction(initialData!.id, {
+        title: docTitle.trim(),
+        content: JSON.stringify(slides),
+        observation: description,
+      });
+    } catch (e) {
+      console.error("Auto-save error:", e);
+    } finally {
+      setStatus("idle");
+    }
+  }, [isEditMode, initialData, docTitle, slides, description]);
+
+  const scheduleAutoSave = useCallback(() => {
+    if (!isEditMode) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => autoSave(), 1500);
+  }, [isEditMode, autoSave]);
+
+  useEffect(() => {
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, []);
+
+  // Watch for changes to trigger auto-save in edit mode
+  useEffect(() => {
+    if (isEditMode) scheduleAutoSave();
+  }, [slides, docTitle, description, isEditMode, scheduleAutoSave]);
 
   const handleSave = async () => {
     if (!docTitle.trim()) return alert("Le titre est requis");
     setStatus("saving");
     try {
-      if (initialData?.id) {
-        // Mode édition
-        await updateDriveItemAction(initialData.id, {
+      if (isEditMode) {
+        await updateDriveItemAction(initialData!.id, {
           title: docTitle.trim(),
           content: JSON.stringify(slides),
           observation: description,
         });
         setStatus("idle");
-        alert("Modifications enregistrées !");
       } else {
-        // Mode création
         const docId = await createDocRow({
           title: docTitle.trim(),
           content: JSON.stringify(slides),

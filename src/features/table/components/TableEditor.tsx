@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createDocRow } from "@/lib/createDocRow";
 import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/modify";
@@ -21,6 +21,7 @@ interface TableEditorProps {
 
 export default function TableEditor({ initialData }: TableEditorProps) {
   const router = useRouter();
+  const isEditMode = !!initialData?.id;
 
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.observation || "");
@@ -38,28 +39,58 @@ export default function TableEditor({ initialData }: TableEditorProps) {
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- AUTO-SAVE (edit mode only, debounce 1.5s) ---
+  const autoSave = useCallback(async () => {
+    if (!isEditMode || !title.trim()) return;
+    setStatus("saving");
+    try {
+      await updateDriveItemAction(initialData!.id, {
+        title: title.trim(),
+        content: JSON.stringify(data),
+        observation: description,
+      });
+    } catch (e) {
+      console.error("Auto-save error:", e);
+    } finally {
+      setStatus("idle");
+    }
+  }, [isEditMode, initialData, title, data, description]);
+
+  const scheduleAutoSave = useCallback(() => {
+    if (!isEditMode) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => autoSave(), 1500);
+  }, [isEditMode, autoSave]);
+
+  useEffect(() => {
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, []);
+
+  // Watch for data changes to trigger auto-save in edit mode
+  useEffect(() => {
+    if (isEditMode) scheduleAutoSave();
+  }, [data, title, description, isEditMode, scheduleAutoSave]);
 
   const handleSave = async () => {
     if (!title.trim()) return alert("Le titre est obligatoire");
     setStatus("saving");
 
     try {
-      if (initialData?.id) {
-        // Mode édition
-        await updateDriveItemAction(initialData.id, {
+      if (isEditMode) {
+        await updateDriveItemAction(initialData!.id, {
           title: title.trim(),
           content: JSON.stringify(data),
           observation: description,
         });
         setStatus("idle");
-        alert("Modifications enregistrées !");
       } else {
-        // Mode création
         const docId = await createDocRow({
           title: title.trim(),
           content: JSON.stringify(data),
           doc_type: "table",
-          // @ts-ignore : ajout de la description si ta table MyDrive possède la colonne observation
+          // @ts-ignore
           observation: description,
         });
 
@@ -78,19 +109,16 @@ export default function TableEditor({ initialData }: TableEditorProps) {
 
   return (
     <div className="flex flex-col h-dvh w-full bg-neutral-900 text-white overflow-hidden">
-      {/* Barre d'outils et Titre */}
       <TableHeader
         title={title} setTitle={setTitle}
         description={description} setDescription={setDescription}
         onSave={handleSave} status={status}
       />
 
-      {/* Zone de la grille Excel - Fond Noir, remplit tout l'espace restant */}
       <div className="flex-1 relative bg-black min-h-0">
         <TableGrid data={data} setData={setData} />
       </div>
 
-      {/* Barre de Tags en bas */}
       <div className="bg-neutral-900 border-t border-neutral-800 p-4">
         <TableTags selectedTags={selectedTags} setSelectedTags={setSelectedTags} />
       </div>
