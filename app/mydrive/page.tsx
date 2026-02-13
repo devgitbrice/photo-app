@@ -13,19 +13,23 @@ export default async function MyDrivePage() {
         <h1 className="text-2xl font-semibold">MyDrive</h1>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/newdoc" className="rounded-2xl px-4 py-2 font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
+          <Link href="/newdoc" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
             Créer Doc
           </Link>
-          <Link href="/newmindmap" className="rounded-2xl px-4 py-2 font-semibold border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors">
+          {/* NOUVEAU BOUTON PYTHON */}
+          <Link href="/newpython" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-colors">
+            Script Python
+          </Link>
+          <Link href="/newmindmap" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors">
             Créer Mindmap
           </Link>
-          <Link href="/newtable" className="rounded-2xl px-4 py-2 font-semibold border border-green-600 text-green-400 hover:bg-green-600 hover:text-white transition-colors">
+          <Link href="/newtable" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-green-600 text-green-400 hover:bg-green-600 hover:text-white transition-colors">
             Créer Table
           </Link>
-          <Link href="/newpresentation" className="rounded-2xl px-4 py-2 font-semibold border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors">
+          <Link href="/newpresentation" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors">
             Créer Présentation
           </Link>
-          <Link href="/" className="rounded-2xl px-4 py-2 font-semibold border hover:bg-gray-100 transition-colors">
+          <Link href="/" className="rounded-2xl px-4 py-2 text-sm font-semibold border hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
             Ajouter
           </Link>
         </div>
@@ -37,6 +41,9 @@ export default async function MyDrivePage() {
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/newdoc" className="rounded-2xl px-6 py-3 font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
               Créer Doc
+            </Link>
+            <Link href="/newpython" className="rounded-2xl px-6 py-3 font-semibold border border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-colors">
+              Script Python
             </Link>
             <Link href="/newmindmap" className="rounded-2xl px-6 py-3 font-semibold border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors">
               Créer Mindmap

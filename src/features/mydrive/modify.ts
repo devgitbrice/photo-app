@@ -3,11 +3,10 @@
 import { supabase } from "@/lib/supabaseClient";
 import { revalidatePath } from "next/cache";
 
-export async function updateDriveItemAction(id: string, updates: Record<string, string>) {
-  
-  // Note : On n'a plus besoin de faire "const supabase = createClient()" 
-  // car on utilise l'instance 'supabase' importée ligne 4.
-
+/**
+ * METTRE À JOUR UN ITEM (Titre, Observation, etc.)
+ */
+export async function updateDriveItemAction(id: string, updates: Record<string, any>) {
   const { error } = await supabase
     .from("MyDrive") 
     .update(updates)
@@ -18,17 +17,17 @@ export async function updateDriveItemAction(id: string, updates: Record<string, 
     throw new Error("Erreur lors de la mise à jour");
   }
 
-  // On rafraîchit la page pour voir les changements
   revalidatePath("/app/mydrive");
 }
 
+/**
+ * REMPLACER UNE IMAGE DANS LE STORAGE ET LA DB
+ */
 export async function replaceImageAction(id: string, imagePath: string, imageData: string) {
-  // imageData est un base64 data URL
   const base64Data = imageData.split(",")[1];
-  // Utiliser Buffer.from (Node.js) au lieu de atob (navigateur)
   const bytes = Buffer.from(base64Data, "base64");
 
-  // Supprimer l'ancien fichier
+  // 1. Supprimer l'ancien fichier
   const { error: deleteError } = await supabase.storage
     .from("MyDrive")
     .remove([imagePath]);
@@ -38,7 +37,7 @@ export async function replaceImageAction(id: string, imagePath: string, imageDat
     throw new Error("Erreur lors de la suppression de l'ancien fichier");
   }
 
-  // Upload le nouveau fichier avec le même chemin
+  // 2. Upload le nouveau
   const { error: uploadError } = await supabase.storage
     .from("MyDrive")
     .upload(imagePath, bytes, {
@@ -52,32 +51,30 @@ export async function replaceImageAction(id: string, imagePath: string, imageDat
     throw new Error("Erreur lors de l'upload du nouveau fichier");
   }
 
-  // Récupérer la nouvelle URL publique (avec un cache buster)
+  // 3. Update URL avec cache buster
   const { data } = supabase.storage.from("MyDrive").getPublicUrl(imagePath);
   const newUrl = data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
 
-  // Mettre à jour l'URL dans la base de données pour forcer le refresh du cache
   if (newUrl) {
     const { error: updateError } = await supabase
       .from("MyDrive")
       .update({ image_url: newUrl })
       .eq("id", id);
 
-    if (updateError) {
-      console.error("Erreur update URL:", updateError);
-    }
+    if (updateError) console.error("Erreur update URL:", updateError);
   }
 
   revalidatePath("/app/mydrive");
-
   return { success: true, newUrl };
 }
 
+/**
+ * GESTION DES TAGS (Création, Ajout, Suppression)
+ */
 export async function createTagAction(name: string) {
   const trimmed = name.trim().toLowerCase();
   if (!trimmed) throw new Error("Nom du tag vide");
 
-  // Upsert: si le tag existe déjà, on le récupère
   const { data: existing } = await supabase
     .from("tags")
     .select("id, name, created_at")
@@ -110,7 +107,6 @@ export async function addTagToItemAction(mydriveId: string, tagId: string) {
     console.error("Erreur ajout tag:", error);
     throw new Error("Erreur lors de l'ajout du tag");
   }
-
   revalidatePath("/app/mydrive");
 }
 
@@ -125,10 +121,12 @@ export async function removeTagFromItemAction(mydriveId: string, tagId: string) 
     console.error("Erreur suppression tag:", error);
     throw new Error("Erreur lors de la suppression du tag");
   }
-
   revalidatePath("/app/mydrive");
 }
 
+/**
+ * METTRE À JOUR LE CONTENU TEXTE (Doc, Python, Table)
+ */
 export async function updateDriveContentAction(id: string, content: string) {
   const { error } = await supabase
     .from("MyDrive")
@@ -139,22 +137,17 @@ export async function updateDriveContentAction(id: string, content: string) {
     console.error("Erreur update content:", error);
     throw new Error("Erreur lors de la mise à jour du contenu");
   }
-
   revalidatePath("/app/mydrive");
 }
 
+/**
+ * SUPPRIMER UN ITEM (Fichier + Ligne DB)
+ */
 export async function deleteDriveItemAction(id: string, imagePath: string) {
-  // Supprimer le fichier du storage
-  const { error: storageError } = await supabase.storage
-    .from("MyDrive")
-    .remove([imagePath]);
-
-  if (storageError) {
-    console.error("Erreur suppression storage:", storageError);
-    throw new Error("Erreur lors de la suppression du fichier");
+  if (imagePath) {
+    await supabase.storage.from("MyDrive").remove([imagePath]);
   }
 
-  // Supprimer l'entrée de la base de données
   const { error: dbError } = await supabase
     .from("MyDrive")
     .delete()
@@ -166,4 +159,54 @@ export async function deleteDriveItemAction(id: string, imagePath: string) {
   }
 
   revalidatePath("/app/mydrive");
+}
+
+/**
+ * --- CRÉATION SCRIPT PYTHON ---
+ */
+export async function createPythonScriptAction(input: {
+  title: string;
+  content: string;
+  observation?: string;
+  tagIds?: string[]; // Changé de 'tags' à 'tagIds' pour correspondre à l'éditeur
+}) {
+  // 1. Insertion dans MyDrive
+  const { data, error } = await supabase
+    .from("MyDrive")
+    .insert([
+      {
+        title: input.title,
+        content: input.content,
+        observation: input.observation || "",
+        doc_type: "python",
+        type: "file",
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("ERREUR CRÉATION PYTHON (Supabase):", error.message, error.details);
+    throw new Error(`Erreur Supabase: ${error.message}`);
+  }
+
+  // 2. Liaison des tags si présents
+  if (input.tagIds && input.tagIds.length > 0) {
+    const tagLinks = input.tagIds.map(tagId => ({
+      mydrive_id: data.id,
+      tag_id: tagId
+    }));
+    
+    const { error: tagError } = await supabase
+      .from("mydrive_tags")
+      .insert(tagLinks);
+
+    if (tagError) {
+      console.error("Erreur liaison tags Python:", tagError);
+      // On ne throw pas forcément ici, le script est quand même créé
+    }
+  }
+
+  revalidatePath("/app/mydrive");
+  return { success: true, id: data.id };
 }

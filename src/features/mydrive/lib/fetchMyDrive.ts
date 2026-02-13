@@ -3,7 +3,6 @@ import type { MyDriveItem, Tag } from "@/features/mydrive/types";
 
 /**
  * Récupère tous les documents MyDrive avec leurs tags
- * Triés par date de création (plus récent en premier)
  */
 export async function fetchMyDrive(): Promise<MyDriveItem[]> {
   const { data, error } = await supabase
@@ -17,6 +16,7 @@ export async function fetchMyDrive(): Promise<MyDriveItem[]> {
       image_url,
       content,
       doc_type,
+      type,
       created_at,
       mydrive_tags (
         tags (
@@ -34,36 +34,29 @@ export async function fetchMyDrive(): Promise<MyDriveItem[]> {
     throw new Error("Impossible de charger MyDrive.");
   }
 
+  return (data ?? []).map((row: any) => {
+    // Aplatissement des tags pour MyDriveGallery
+    const flattenedTags = (row.mydrive_tags || [])
+      .map((mt: any) => mt.tags)
+      .filter(Boolean);
 
-
-
-
-return (data ?? []).map((row: any) => ({
-  id: row.id as string,
-  title: row.title as string,
-  observation: (row.observation as string) || "",
-  image_path: (row.image_path as string) || "",
-  image_url: (row.image_url as string) || "",
-  content: (row.content as string) || "",
-  created_at: row.created_at as string,
-  // --- AJOUTE CES LIGNES CI-DESSOUS ---
-  type: (row.type as string) || "file", // Valeur par défaut "file" si vide
-  doc_type: (row.doc_type as string) || "scan",
-  tags: (row.tags as any[]) || [],
-}));
-
-
-
-
-
-
-
-
-
+    return {
+      id: row.id,
+      title: row.title,
+      observation: row.observation || "",
+      image_path: row.image_path || "",
+      image_url: row.image_url || "",
+      content: row.content || "",
+      created_at: row.created_at,
+      type: row.type || "file",
+      doc_type: row.doc_type || "scan",
+      tags: flattenedTags,
+    };
+  });
 }
 
 /**
- * Récupère tous les tags existants, triés par nom
+ * Récupère tous les tags existants
  */
 export async function fetchAllTags(): Promise<Tag[]> {
   const { data, error } = await supabase

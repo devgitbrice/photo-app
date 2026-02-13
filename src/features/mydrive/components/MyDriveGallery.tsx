@@ -57,16 +57,41 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     return result;
   }, [items, searchQuery, selectedTagId]);
 
-  // --- STATISTIQUES TAGS ---
+
+
+
+
+
+
+
+
+// --- STATISTIQUES TAGS CORRIGÉES ---
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const item of items) {
-      for (const tag of item.tags || []) {
-        counts[tag.id] = (counts[tag.id] || 0) + 1;
+    
+    items.forEach((item) => {
+      // On vérifie si item.tags existe et est un tableau
+      if (Array.isArray(item.tags)) {
+        item.tags.forEach((tag: any) => {
+          // Supabase peut renvoyer soit {id: '...'} soit {tag_id: '...'}
+          const tagId = tag.id || tag.tag_id;
+          if (tagId) {
+            counts[tagId] = (counts[tagId] || 0) + 1;
+          }
+        });
       }
-    }
+    });
+
     return counts;
   }, [items]);
+
+
+
+
+
+
+
+
 
   // --- NAVIGATION CLAVIER ---
   const tagIdList = useMemo<(string | null)[]>(
@@ -175,39 +200,35 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     { name: "ToutesMesApps", url: "https://toutes-mes-apps.vercel.app/" },
   ];
 
+  // --- LOGIQUE DE ROUTAGE INTELLIGENTE (MODIF) ---
+  const getLinkHref = (item: MyDriveItem) => {
+    const itemData = item as any;
+    if (itemData.type === 'folder') return `/mydrive/folder/${item.id}`;
 
-
-
-
-
-
-
-
-
-
+    // On définit ici vers quel éditeur envoyer chaque doc_type
+    switch (itemData.doc_type) {
+      case "python": return `/editpython/${item.id}`;
+      case "doc": return `/editdoc/${item.id}`;
+      case "table": return `/edittable/${item.id}`;
+      case "mindmap": return `/editmindmap/${item.id}`;
+      case "presentation": return `/editpresentation/${item.id}`;
+      default: return null; // Les scans photo/PDF retournent null pour ouvrir l'overlay
+    }
+  };
 
 // --- RENDU CARTE (SÉCURISÉ) ---
   const renderCardContent = (item: MyDriveItem) => {
-    // On force le type en "any" temporairement pour éviter l'erreur de build
     const itemData = item as any; 
-    
     const rawUrl = itemData.image_url ? itemData.image_url.trim() : "";
     const validUrl = rawUrl.length > 0 ? rawUrl : null;
 
     return (
       <>
-        {/* Zone Image / Icône */}
         <div className={`${imageHeightClass} w-full bg-neutral-950 relative overflow-hidden flex items-center justify-center`}>
-          
           {validUrl ? (
-            <img
-              src={validUrl}
-              alt={item.title}
-              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-            />
+            <img src={validUrl} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
           ) : (
             <div className="flex flex-col items-center justify-center text-neutral-700 group-hover:text-blue-500 transition-colors">
-               {/* Utilisation de itemData.type au lieu de item.type */}
                {itemData.type === "folder" ? (
                   <svg className="w-16 h-16 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" /></svg>
                ) : (
@@ -216,7 +237,6 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
             </div>
           )}
 
-          {/* Badge Type */}
           {(itemData.doc_type || itemData.type === 'folder') && (
               <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border shadow-sm ${
                 itemData.type === 'folder' 
@@ -228,88 +248,37 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
           )}
         </div>
 
-        {/* Info Content */}
         <div className="p-3 flex flex-col gap-1 bg-neutral-900 border-t border-neutral-800">
-          <h3 className="font-medium text-neutral-200 truncate text-sm group-hover:text-blue-400 transition-colors">
-            {item.title}
-          </h3>
+          <h3 className="font-medium text-neutral-200 truncate text-sm group-hover:text-blue-400 transition-colors">{item.title}</h3>
           <div className="flex items-center justify-between text-[10px] text-neutral-500 uppercase tracking-wide">
             <span suppressHydrationWarning>
               {item.created_at ? format(new Date(item.created_at), "dd MMM", { locale: fr }) : "-"}
             </span>
-
-
-
-
-
-
-            
-{item.tags && item.tags.length > 0 && (
-  <div className="flex gap-1">
-    {item.tags.slice(0, 3).map((tag, idx) => (
-      <span 
-        key={idx} 
-        className="w-2 h-2 rounded-full ring-1 ring-neutral-900" 
-        style={{ backgroundColor: (tag as any).color || '#555' }} 
-        title={(tag as any).name || ''} 
-      />
-    ))}
-  </div>
-)}
-
-
-
-
-
+            {item.tags && item.tags.length > 0 && (
+              <div className="flex gap-1">
+                {item.tags.slice(0, 3).map((tag, idx) => (
+                  <span key={idx} className="w-2 h-2 rounded-full ring-1 ring-neutral-900" style={{ backgroundColor: (tag as any).color || '#555' }} title={(tag as any).name || ''} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </>
     );
   };
 
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   return (
     <>
       <div className="flex gap-6">
-        {/* Sidebar Tags */}
         {allTags.length > 0 && (
           <aside className="hidden md:block w-48 shrink-0">
-            <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-3">
-              Tags
-            </h3>
+            <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wide mb-3">Tags</h3>
             <nav className="space-y-1">
-              <button
-                onClick={() => setSelectedTagId(null)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  !selectedTagId ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"
-                }`}
-              >
+              <button onClick={() => setSelectedTagId(null)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedTagId ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
                 Tous ({items.length})
               </button>
               {allTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between ${
-                    selectedTagId === tag.id ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"
-                  }`}
-                >
+                <button key={tag.id} onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between ${selectedTagId === tag.id ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
                   <span>{tag.name}</span>
                   <span className="opacity-60 text-xs py-0.5">({tagCounts[tag.id] || 0})</span>
                 </button>
@@ -318,10 +287,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
           </aside>
         )}
 
-        {/* Main content */}
         <section className="space-y-4 min-h-[80vh] flex flex-col flex-1 min-w-0">
-          
-          {/* Controls Mobile & Desktop */}
           <div className="flex flex-col gap-3">
             {allTags.length > 0 && (
               <div className="md:hidden overflow-x-auto pb-1">
@@ -335,18 +301,10 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm opacity-70">
-                {filteredItems.length} élément{filteredItems.length > 1 ? "s" : ""}
-              </div>
+              <div className="text-sm opacity-70">{filteredItems.length} élément{filteredItems.length > 1 ? "s" : ""}</div>
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="relative flex-1 sm:flex-none">
-                  <input
-                    type="text"
-                    placeholder="Rechercher..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full sm:w-64 bg-neutral-800 text-white border border-neutral-700 rounded-lg px-4 py-1.5 pl-9 outline-none focus:border-blue-500 text-sm"
-                  />
+                  <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-64 bg-neutral-800 text-white border border-neutral-700 rounded-lg px-4 py-1.5 pl-9 outline-none focus:border-blue-500 text-sm" />
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
                 <div className="flex items-center gap-2">
@@ -357,39 +315,26 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
             </div>
           </div>
 
-          {/* Grid */}
           <div className={`grid gap-4 ${gridClass} flex-1 content-start`}>
             {filteredItems.length > 0 ? (
               filteredItems.map((item) => {
                 const wrapperClass = "group relative flex flex-col bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden hover:border-blue-500 transition-all hover:shadow-lg hover:shadow-blue-900/20 cursor-pointer";
                 
+                // MODIF LOGIQUE D'OUVERTURE ICI
+                const href = getLinkHref(item);
 
-
-
-
-
-
-
-
-
-                if ((item as any).type === 'folder') {
-    return (
-        <Link key={item.id} href={`/mydrive/folder/${item.id}`} className={wrapperClass}>
-            {renderCardContent(item)}
-        </Link>
-    );
-}
-
-
-
-
-
-
+                if (href) {
+                  return (
+                    <Link key={item.id} href={href} className={wrapperClass}>
+                      {renderCardContent(item)}
+                    </Link>
+                  );
+                }
                 
                 return (
-                    <div key={item.id} onClick={() => handleOpen(item)} className={wrapperClass}>
-                        {renderCardContent(item)}
-                    </div>
+                  <div key={item.id} onClick={() => handleOpen(item)} className={wrapperClass}>
+                    {renderCardContent(item)}
+                  </div>
                 );
               })
             ) : (
@@ -400,23 +345,17 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
             )}
           </div>
 
-          {/* Footer */}
           <footer className="mt-12 pt-8 pb-4 border-t border-neutral-800">
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-3">
               {myLinks.map((link) => (
-                <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-500 hover:text-white hover:underline underline-offset-4">
-                  {link.name}
-                </a>
+                <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-500 hover:text-white hover:underline underline-offset-4">{link.name}</a>
               ))}
             </div>
-            <div className="text-center mt-4 text-xs text-neutral-700">
-              &copy; {new Date().getFullYear()} MyDrive Ecosystem
-            </div>
+            <div className="text-center mt-4 text-xs text-neutral-700">&copy; {new Date().getFullYear()} MyDrive Ecosystem</div>
           </footer>
         </section>
       </div>
 
-      {/* Overlay Swipeable */}
       {selectedIndex >= 0 && (
         <SwipeableOverlay
           items={filteredItems}

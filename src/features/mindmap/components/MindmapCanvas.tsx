@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import ReactFlow, {
   addEdge,
   ConnectionLineType,
@@ -12,19 +12,17 @@ import ReactFlow, {
   ReactFlowProvider,
   Node,
   Edge,
-  useReactFlow,
-  useStoreApi, // Nécessaire pour accéder à l'état interne proprement
+  useStoreApi,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import dagre from "dagre";
 import MindMapNode from "./MindMapNode";
 
-// --- ALGORITHME DE MISE EN PAGE ---
+// --- ALGORITHME DE MISE EN PAGE (DAGRE) ---
 const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  // Augmentez ranksep pour espacer les colonnes (150 -> 180)
-  dagreGraph.setGraph({ rankdir: "LR", nodesep: 30, ranksep: 180 });
+  dagreGraph.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 200 });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: 180, height: 60 });
@@ -53,21 +51,25 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   return { nodes: layoutedNodes, edges };
 };
 
-const initialNodes: Node[] = [
-  {
-    id: "root",
-    type: "mindmap",
-    data: { label: "Cœur du Sujet", isRoot: true },
-    position: { x: 0, y: 0 },
-  },
-];
-
-function MindmapFlow() {
-  const store = useStoreApi(); // Accès direct au store ReactFlow
+// --- COMPOSANT INTERNE (FLOW) ---
+function MindmapFlow({ 
+  initialNodes, 
+  initialEdges, 
+  onDataChange 
+}: { 
+  initialNodes: Node[], 
+  initialEdges: Edge[], 
+  onDataChange: (nodes: Node[], edges: Edge[]) => void 
+}) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const nodeTypes = useMemo(() => ({ mindmap: MindMapNode }), []);
+
+  // IMPORTANT : On notifie le parent dès que les nodes ou edges changent localement
+  useEffect(() => {
+    onDataChange(nodes, edges);
+  }, [nodes, edges, onDataChange]);
 
   // Fonction de réorganisation
   const onLayout = useCallback((currNodes = nodes, currEdges = edges) => {
@@ -76,33 +78,23 @@ function MindmapFlow() {
     setEdges([...layouted.edges]);
   }, [nodes, edges, setNodes, setEdges]);
 
-  // --- NOUVELLE LOGIQUE MAGNETIQUE ---
+  // --- LOGIQUE MAGNETIQUE (RE-PARENTAGE AU VOL) ---
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, draggedNode: Node) => {
-      // 1. On ne peut pas déplacer la racine
       if (draggedNode.data.isRoot) return;
 
-      // 2. On récupère la position actuelle de la bulle lâchée
-      // (ReactFlow met à jour node.position en interne pendant le drag)
       const draggedNodeCenter = {
-        x: draggedNode.position.x + 90, // Largeur/2
-        y: draggedNode.position.y + 30, // Hauteur/2
+        x: draggedNode.position.x + 90,
+        y: draggedNode.position.y + 30,
       };
 
-      // 3. On cherche la bulle la plus proche
       let closestNode: Node | null = null;
-      let minDistance = 5000; // Distance infinie au début
-      const MAGNET_DISTANCE = 150; // Distance max pour "accrocher" (en pixels)
+      let minDistance = 5000;
+      const MAGNET_DISTANCE = 150; 
 
       nodes.forEach((n) => {
-        // On ne se lie pas à soi-même
         if (n.id === draggedNode.id) return;
-
-        const nodeCenter = {
-          x: n.position.x + 90,
-          y: n.position.y + 30,
-        };
-
+        const nodeCenter = { x: n.position.x + 90, y: n.position.y + 30 };
         const dx = nodeCenter.x - draggedNodeCenter.x;
         const dy = nodeCenter.y - draggedNodeCenter.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -113,15 +105,9 @@ function MindmapFlow() {
         }
       });
 
-      // 4. Si on a trouvé un nouveau parent proche
       if (closestNode) {
-        // @ts-ignore
-        const parentId = closestNode.id;
-
-        // A. On supprime l'ancien lien (celui qui arrivait vers draggedNode)
+        const parentId = (closestNode as Node).id;
         const filteredEdges = edges.filter((e) => e.target !== draggedNode.id);
-
-        // B. On crée le nouveau lien
         const newEdge: Edge = {
           id: `e-${parentId}-${draggedNode.id}`,
           source: parentId,
@@ -131,11 +117,9 @@ function MindmapFlow() {
         };
 
         const newEdges = addEdge(newEdge, filteredEdges);
-
-        // C. On met à jour et ON FORCE LE RANGEMENT
         setEdges(newEdges);
         
-        // On appelle le layout avec les nouvelles données immédiatement
+        // On relance le layout pour aligner proprement après le magnétisme
         const layouted = getLayoutedElements(nodes, newEdges);
         setNodes(layouted.nodes);
       }
@@ -143,7 +127,14 @@ function MindmapFlow() {
     [nodes, edges, setEdges, setNodes]
   );
 
-  // --- GESTION CLAVIER (Tab/Entrée) ---
+
+
+
+
+
+
+
+// --- GESTION CLAVIER (Tab/Entrée) ---
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const selectedNode = nodes.find((n) => n.selected);
@@ -152,14 +143,16 @@ function MindmapFlow() {
       if (event.key === "Tab") {
         event.preventDefault();
         const newNodeId = `node-${Date.now()}`;
-        const newNode = {
+        
+        const newNode: Node = {
           id: newNodeId,
           type: "mindmap",
           data: { label: "Nouvelle idée" },
           position: { x: 0, y: 0 },
           selected: true,
         };
-        const newEdge = {
+
+        const newEdge: Edge = {
           id: `e-${selectedNode.id}-${newNodeId}`,
           source: selectedNode.id,
           target: newNodeId,
@@ -167,8 +160,13 @@ function MindmapFlow() {
           style: { stroke: '#555' }
         };
 
-        const nextNodes = nodes.map(n => ({...n, selected: false})).concat(newNode);
-        const nextEdges = [...edges, newEdge];
+        // --- FIX ICI : On utilise le spread et on caste explicitement ---
+        const nextNodes: Node[] = [
+          ...nodes.map(n => ({ ...n, selected: false })), 
+          newNode
+        ];
+        const nextEdges: Edge[] = [...edges, newEdge];
+        
         onLayout(nextNodes, nextEdges);
       }
 
@@ -178,14 +176,15 @@ function MindmapFlow() {
         if (!parentEdge) return;
 
         const newNodeId = `node-${Date.now()}`;
-        const newNode = {
+        const newNode: Node = {
           id: newNodeId,
           type: "mindmap",
           data: { label: "Idée sœur" },
           position: { x: 0, y: 0 },
           selected: true,
         };
-        const newEdge = {
+
+        const newEdge: Edge = {
           id: `e-${parentEdge.source}-${newNodeId}`,
           source: parentEdge.source,
           target: newNodeId,
@@ -193,38 +192,61 @@ function MindmapFlow() {
           style: { stroke: '#555' }
         };
 
-        const nextNodes = nodes.map(n => ({...n, selected: false})).concat(newNode);
-        const nextEdges = [...edges, newEdge];
+        // --- FIX ICI AUSSI ---
+        const nextNodes: Node[] = [
+          ...nodes.map(n => ({ ...n, selected: false })), 
+          newNode
+        ];
+        const nextEdges: Edge[] = [...edges, newEdge];
+        
         onLayout(nextNodes, nextEdges);
       }
     },
-    [nodes, edges, onLayout] // Dépendance simplifiée via onLayout
+    [nodes, edges, onLayout]
   );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   return (
     <div 
       className="h-full w-full bg-neutral-950 outline-none" 
       onKeyDown={onKeyDown} 
       tabIndex={0} 
-      autoFocus
     >
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onNodeDragStop={onNodeDragStop} // C'est ici que la magie opère
+        onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         connectionLineType={ConnectionLineType.SmoothStep}
-        connectionLineStyle={{ stroke: '#666' }}
       >
         <Controls className="bg-neutral-800 border-neutral-700 [&>button]:fill-white" />
         <Background color="#333" gap={20} size={1} />
         
         <Panel position="top-right">
           <button
-            onClick={() => onLayout(nodes, edges)}
+            onClick={() => onLayout()}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition text-sm font-medium"
           >
             Réorganiser ⚡️
@@ -235,10 +257,40 @@ function MindmapFlow() {
   );
 }
 
-export default function MindmapCanvas(props: any) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// --- WRAPPER PUBLIC ---
+export default function MindmapCanvas({ initialNodes, initialEdges, onDataChange }: any) {
+  // On définit une racine par défaut si les données sont vides
+  const defaultNodes = initialNodes?.length > 0 ? initialNodes : [
+    {
+      id: "root",
+      type: "mindmap",
+      data: { label: "Cœur du Sujet", isRoot: true },
+      position: { x: 0, y: 0 },
+    },
+  ];
+  const defaultEdges = initialEdges || [];
+
   return (
     <ReactFlowProvider>
-      <MindmapFlow {...props} />
+      <MindmapFlow 
+        initialNodes={defaultNodes} 
+        initialEdges={defaultEdges} 
+        onDataChange={onDataChange} 
+      />
     </ReactFlowProvider>
   );
 }
