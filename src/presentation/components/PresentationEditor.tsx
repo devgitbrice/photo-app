@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { createDocRow } from "@/lib/createDocRow";
 import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/modify";
 import PresentationHeader from "./PresentationHeader";
@@ -39,8 +38,7 @@ function parseSlides(content: string): Slide[] {
 }
 
 export default function PresentationEditor({ initialData }: PresentationEditorProps) {
-  const router = useRouter();
-  const isEditMode = !!initialData?.id;
+  const [docId, setDocId] = useState(initialData?.id || "");
   const [docTitle, setDocTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.observation || "");
 
@@ -52,60 +50,79 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const savingRef = useRef(false);
 
-  // --- AUTO-SAVE (edit mode only, debounce 1.5s) ---
+  // --- AUTO-SAVE (debounce 1.5s) ---
   const autoSave = useCallback(async () => {
-    if (!isEditMode || !docTitle.trim()) return;
+    if (!docTitle.trim() || savingRef.current) return;
+    savingRef.current = true;
     setStatus("saving");
     try {
-      await updateDriveItemAction(initialData!.id, {
-        title: docTitle.trim(),
-        content: JSON.stringify(slides),
-        observation: description,
-      });
+      if (docId) {
+        // Edit mode: update existing document
+        await updateDriveItemAction(docId, {
+          title: docTitle.trim(),
+          content: JSON.stringify(slides),
+          observation: description,
+        });
+      } else {
+        // Create mode: create document, then switch to edit mode
+        const newId = await createDocRow({
+          title: docTitle.trim(),
+          content: JSON.stringify(slides),
+          doc_type: "presentation",
+          observation: description,
+        });
+        setDocId(newId);
+        for (const tag of selectedTags) await addTagToItemAction(newId, tag.id);
+        // Update URL without full reload so refresh will restore state
+        window.history.replaceState(null, "", `/editpresentation/${newId}`);
+      }
     } catch (e) {
       console.error("Auto-save error:", e);
     } finally {
+      savingRef.current = false;
       setStatus("idle");
     }
-  }, [isEditMode, initialData, docTitle, slides, description]);
+  }, [docId, docTitle, slides, description, selectedTags]);
 
   const scheduleAutoSave = useCallback(() => {
-    if (!isEditMode) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => autoSave(), 1500);
-  }, [isEditMode, autoSave]);
+  }, [autoSave]);
 
   useEffect(() => {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, []);
 
-  // Watch for changes to trigger auto-save in edit mode
+  // Watch for changes to trigger auto-save
   useEffect(() => {
-    if (isEditMode) scheduleAutoSave();
-  }, [slides, docTitle, description, isEditMode, scheduleAutoSave]);
+    if (docTitle.trim()) scheduleAutoSave();
+  }, [slides, docTitle, description, scheduleAutoSave]);
 
   const handleSave = async () => {
     if (!docTitle.trim()) return alert("Le titre est requis");
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setStatus("saving");
     try {
-      if (isEditMode) {
-        await updateDriveItemAction(initialData!.id, {
+      if (docId) {
+        await updateDriveItemAction(docId, {
           title: docTitle.trim(),
           content: JSON.stringify(slides),
           observation: description,
         });
         setStatus("idle");
       } else {
-        const docId = await createDocRow({
+        const newId = await createDocRow({
           title: docTitle.trim(),
           content: JSON.stringify(slides),
           doc_type: "presentation",
-          // @ts-expect-error : observation supportée par createDocRow
           observation: description,
         });
-        for (const tag of selectedTags) await addTagToItemAction(docId, tag.id);
-        router.push("/mydrive");
+        setDocId(newId);
+        for (const tag of selectedTags) await addTagToItemAction(newId, tag.id);
+        window.history.replaceState(null, "", `/editpresentation/${newId}`);
+        setStatus("idle");
       }
     } catch (e) {
       console.error(e);

@@ -10,6 +10,7 @@ type CreateDocInput = {
   title: string;
   content: string;
   doc_type: DocType;
+  observation?: string;
 };
 
 export async function createDocRow(input: CreateDocInput): Promise<string> {
@@ -18,7 +19,7 @@ export async function createDocRow(input: CreateDocInput): Promise<string> {
     .insert({
       title: input.title,
       content: input.content,
-      observation: "",
+      observation: input.observation || "",
       image_path: "",
       image_url: "",
       doc_type: input.doc_type, // Type dynamique
