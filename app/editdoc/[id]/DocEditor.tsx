@@ -101,36 +101,36 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
     },
     {
       buttons: [
-        { icon: "H1", title: "Titre 1", action: () => exec("formatBlock", "h1") },
-        { icon: "H2", title: "Titre 2", action: () => exec("formatBlock", "h2") },
-        { icon: "H3", title: "Titre 3", action: () => exec("formatBlock", "h3") },
-        { icon: "P", title: "Paragraphe", action: () => exec("formatBlock", "p") },
+        { icon: "H1", title: "Titre 1", action: () => exec("formatBlock", "h1"), cls: "" },
+        { icon: "H2", title: "Titre 2", action: () => exec("formatBlock", "h2"), cls: "" },
+        { icon: "H3", title: "Titre 3", action: () => exec("formatBlock", "h3"), cls: "" },
+        { icon: "P", title: "Paragraphe", action: () => exec("formatBlock", "p"), cls: "" },
       ],
     },
     {
       buttons: [
-        { icon: "\u2022", title: "Liste à puces", action: () => exec("insertUnorderedList") },
-        { icon: "1.", title: "Liste numérotée", action: () => exec("insertOrderedList") },
+        { icon: "\u2022", title: "Liste à puces", action: () => exec("insertUnorderedList"), cls: "" },
+        { icon: "1.", title: "Liste numérotée", action: () => exec("insertOrderedList"), cls: "" },
       ],
     },
     {
       buttons: [
-        { icon: "\u2261", title: "Gauche", action: () => exec("justifyLeft") },
-        { icon: "\u2263", title: "Centre", action: () => exec("justifyCenter") },
-        { icon: "\u2262", title: "Droite", action: () => exec("justifyRight") },
+        { icon: "\u2261", title: "Gauche", action: () => exec("justifyLeft"), cls: "" },
+        { icon: "\u2263", title: "Centre", action: () => exec("justifyCenter"), cls: "" },
+        { icon: "\u2262", title: "Droite", action: () => exec("justifyRight"), cls: "" },
       ],
     },
     {
       buttons: [
-        { icon: "\u2015", title: "Ligne", action: () => exec("insertHorizontalRule") },
-        { icon: "\u201C", title: "Citation", action: () => exec("formatBlock", "blockquote") },
-        { icon: "</>", title: "Code", action: () => exec("formatBlock", "pre") },
+        { icon: "\u2015", title: "Ligne", action: () => exec("insertHorizontalRule"), cls: "" },
+        { icon: "\u201C", title: "Citation", action: () => exec("formatBlock", "blockquote"), cls: "" },
+        { icon: "</>", title: "Code", action: () => exec("formatBlock", "pre"), cls: "" },
       ],
     },
     {
       buttons: [
-        { icon: "\u21B6", title: "Annuler", action: () => exec("undo") },
-        { icon: "\u21B7", title: "Rétablir", action: () => exec("redo") },
+        { icon: "\u21B6", title: "Annuler", action: () => exec("undo"), cls: "" },
+        { icon: "\u21B7", title: "Rétablir", action: () => exec("redo"), cls: "" },
       ],
     },
   ];
