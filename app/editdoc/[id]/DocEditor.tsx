@@ -17,16 +17,38 @@ interface DocEditorProps {
   };
 }
 
+/** If content has no HTML tags, treat it as plain text and convert newlines. */
+function ensureHtml(raw: string): string {
+  if (!raw || !raw.trim()) return "<p><br></p>";
+  // Already contains HTML tags → use as-is
+  if (/<[a-z][\s\S]*?>/i.test(raw)) return raw;
+  // Plain text → wrap each line in <p>, empty lines become <p><br></p>
+  return raw
+    .split("\n")
+    .map((line) => (line.trim() ? `<p>${line}</p>` : "<p><br></p>"))
+    .join("");
+}
+
 export default function DocEditor({ allTags: initialAllTags, initialData }: DocEditorProps) {
   const [title, setTitle] = useState(initialData.title);
-  const [content, setContent] = useState(initialData.content);
   const [observation, setObservation] = useState(initialData.observation);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData.tags);
   const [allTags, setAllTags] = useState<Tag[]>(initialAllTags);
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef(initialData.content);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- Initialise contentEditable on mount ---
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = ensureHtml(initialData.content);
+    }
+    // Ensure Enter creates <p> tags consistently across browsers
+    document.execCommand("defaultParagraphSeparator", false, "p");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- AUTO-SAVE (debounce 1s) ---
   const autoSave = useCallback(async (t: string, c: string, o: string) => {
@@ -56,12 +78,12 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    scheduleAutoSave(val, content, observation);
+    scheduleAutoSave(val, contentRef.current, observation);
   };
 
   const handleObservationChange = (val: string) => {
     setObservation(val);
-    scheduleAutoSave(title, content, val);
+    scheduleAutoSave(title, contentRef.current, val);
   };
 
   // --- RIBBON (execCommand) ---
@@ -70,14 +92,14 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
     editorRef.current?.focus();
     setTimeout(() => {
       const html = editorRef.current?.innerHTML || "";
-      setContent(html);
+      contentRef.current = html;
       scheduleAutoSave(title, html, observation);
     }, 50);
   };
 
   const handleEditorInput = () => {
     const html = editorRef.current?.innerHTML || "";
-    setContent(html);
+    contentRef.current = html;
     scheduleAutoSave(title, html, observation);
   };
 
@@ -214,7 +236,6 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
             contentEditable
             suppressContentEditableWarning
             onInput={handleEditorInput}
-            dangerouslySetInnerHTML={{ __html: initialData.content }}
             className="min-h-[60vh] text-white text-base leading-relaxed outline-none
               [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6
               [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5
