@@ -17,7 +17,6 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
   const tocTimeout = useRef<NodeJS.Timeout | null>(null);
   const saveRef = useRef<() => void>(() => {});
 
-  // On importe toute la logique depuis notre hook flambant neuf
   const {
     blocks, focusedBlockId, setFocusedBlockId, htmlRefs,
     handleHtmlChange, handleFocusChange, handleAddBelow,
@@ -36,13 +35,13 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
 
     const blockDivs = document.querySelectorAll('.block-editor-content');
     const updatedHtmls: string[] = [];
+    // On récupère le contenu qui peut désormais contenir des balises <a>
     blockDivs.forEach(div => updatedHtmls.push(div.innerHTML));
 
     const finalHtmls = updatedHtmls.length === blocks.length ? updatedHtmls : blocks.map(b => htmlRefs.current[b.id] || "");
     onChange(finalHtmls.join(SEPARATOR));
   }, [blocks.length, htmlRefs, onChange]);
 
-  // Astuce pour éviter les dépendances cycliques avec le hook
   useEffect(() => {
     saveRef.current = () => {
       if (tocTimeout.current) clearTimeout(tocTimeout.current);
@@ -70,7 +69,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
             />
           ))}
           <div className="mt-8 flex justify-center opacity-50 hover:opacity-100 transition-opacity">
-            <button onClick={handleAddAtEnd} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full transition-colors border border-neutral-700 shadow-sm">
+            <button onClick={handleAddAtEnd} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full transition-colors border border-neutral-700">
               <Plus size={20} />
               <span className="text-sm font-medium">Ajouter un bloc</span>
             </button>

@@ -18,82 +18,76 @@ export const SingleBlock = memo(function SingleBlock({
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Force le navigateur à créer de vrais paragraphes pour éviter le texte aplati
     document.execCommand("defaultParagraphSeparator", false, "p");
-    
     if (editorRef.current && editorRef.current.innerHTML !== block.html) {
       editorRef.current.innerHTML = block.html || "<p><br></p>";
     }
   }, [block.html]);
 
-  const handleInput = () => {
+  const linkifyNode = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+|[a-zA-Z0-9.-]+\.[a-z]{2,10}[^\s<]*)/gi;
+      const text = node.textContent || "";
+      if (urlRegex.test(text)) {
+        const span = document.createElement("span");
+        span.innerHTML = text.replace(urlRegex, (url) => {
+          const href = url.startsWith("http") ? url : `https://${url}`;
+          return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline">${url}</a>`;
+        });
+        node.parentNode?.replaceChild(span, node);
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if ((node as Element).tagName === 'A') return; // Ne pas toucher aux liens déjà existants
+      const children = Array.from(node.childNodes);
+      children.forEach(linkifyNode);
+    }
+  };
+
+  const handleBlur = () => {
     if (editorRef.current) {
-      onHtmlChange(block.id, editorRef.current.innerHTML);
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = editorRef.current.innerHTML;
+      linkifyNode(tempDiv);
+      
+      const newHtml = tempDiv.innerHTML;
+      if (newHtml !== editorRef.current.innerHTML) {
+        editorRef.current.innerHTML = newHtml;
+        onHtmlChange(block.id, newHtml);
+      }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Si on fait Entrée (sans majuscule pour Shift+Enter)
     if (e.key === "Enter" && !e.shiftKey && onSplit) {
       e.preventDefault();
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
-
-      const range = selection.getRangeAt(0);
-      const markerId = `split-marker-${Date.now()}`;
-      const markerNode = document.createElement("span");
-      markerNode.id = markerId;
-
-      // Insère un marqueur invisible là où est le curseur
-      range.insertNode(markerNode);
-      const fullHtml = editorRef.current?.innerHTML || "";
-      // On le retire tout de suite pour ne pas polluer le DOM
-      markerNode.remove(); 
-
-      // On coupe le HTML autour de ce marqueur
-      const parts = fullHtml.split(`<span id="${markerId}"></span>`);
-      if (parts.length === 2) {
-        const before = parts[0] || "<p><br></p>";
-        const after = parts[1] || "<p><br></p>";
-        onSplit(block.id, before, after);
-      }
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      const marker = document.createElement("span");
+      marker.id = `split-${Date.now()}`;
+      range.insertNode(marker);
+      const parts = editorRef.current?.innerHTML.split(marker.outerHTML) || [];
+      marker.remove();
+      if (parts.length === 2) onSplit(block.id, parts[0] || "<p><br></p>", parts[1] || "<p><br></p>");
     }
   };
 
   return (
     <div className="group relative w-full my-2 rounded-lg border border-transparent hover:border-neutral-700 transition-colors p-3">
       <div className="absolute -left-10 top-3 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-        <button onClick={() => onFocusBlock(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-600 rounded-md shadow-sm" title="Zoomer sur ce bloc">
-          <Search size={16} />
-        </button>
-        <button onClick={() => onMoveUp?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-600 rounded-md shadow-sm" title="Monter le bloc">
-          <ArrowUp size={16} />
-        </button>
-        <button onClick={() => onMoveDown?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-600 rounded-md shadow-sm" title="Descendre le bloc">
-          <ArrowDown size={16} />
-        </button>
+        <button onClick={() => onFocusBlock(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><Search size={16} /></button>
+        <button onClick={() => onMoveUp?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowUp size={16} /></button>
+        <button onClick={() => onMoveDown?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowDown size={16} /></button>
       </div>
-
       <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        className="block-editor-content w-full min-w-0 text-white text-base leading-relaxed outline-none min-h-[1.5rem] whitespace-pre-wrap
-          [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6
-          [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5
-          [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4
-          [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3
-          [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3
-          [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-neutral-400 [&_blockquote]:my-4
-          [&_pre]:bg-neutral-900 [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:my-4"
+        ref={editorRef} contentEditable suppressContentEditableWarning
+        onInput={() => onHtmlChange(block.id, editorRef.current?.innerHTML || "")}
+        onBlur={handleBlur} onKeyDown={handleKeyDown}
+        className="block-editor-content w-full text-white outline-none min-h-[1.5rem] whitespace-pre-wrap
+          [&_h1]:text-3xl [&_h1]:font-bold [&_p]:mb-3 [&_pre]:bg-neutral-900 [&_pre]:p-4 [&_pre]:rounded-lg"
       />
-
-      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <button onClick={() => onAddBelow(block.id)} className="p-1.5 bg-blue-600 text-white hover:bg-blue-500 rounded-full shadow-lg" title="Ajouter un bloc en dessous">
-          <Plus size={16} />
-        </button>
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 z-10">
+        <button onClick={() => onAddBelow(block.id)} className="p-1.5 bg-blue-600 text-white rounded-full shadow-lg"><Plus size={16} /></button>
       </div>
     </div>
   );
