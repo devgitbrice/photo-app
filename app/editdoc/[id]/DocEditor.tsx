@@ -17,6 +17,12 @@ interface DocEditorProps {
   };
 }
 
+interface TocEntry {
+  id: string;
+  text: string;
+  level: number;
+}
+
 /** If content has no HTML tags, treat it as plain text and convert newlines. */
 function ensureHtml(raw: string): string {
   if (!raw || !raw.trim()) return "<p><br></p>";
@@ -35,10 +41,28 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData.tags);
   const [allTags, setAllTags] = useState<Tag[]>(initialAllTags);
+  const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
+  const [tocOpen, setTocOpen] = useState(true);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef(initialData.content);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- Extract headings from editor for TOC ---
+  const updateToc = useCallback(() => {
+    if (!editorRef.current) return;
+    const headings = editorRef.current.querySelectorAll("h1, h2, h3");
+    const entries: TocEntry[] = [];
+    headings.forEach((el, i) => {
+      const htmlEl = el as HTMLElement;
+      if (!htmlEl.id) htmlEl.id = `toc-heading-${i}`;
+      const text = htmlEl.textContent?.trim() || "";
+      if (text) {
+        entries.push({ id: htmlEl.id, text, level: parseInt(htmlEl.tagName[1]) });
+      }
+    });
+    setTocEntries(entries);
+  }, []);
 
   // --- Initialise contentEditable on mount ---
   useEffect(() => {
@@ -47,6 +71,8 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
     }
     // Ensure Enter creates <p> tags consistently across browsers
     document.execCommand("defaultParagraphSeparator", false, "p");
+    // Build initial TOC
+    setTimeout(updateToc, 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,6 +120,7 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
       const html = editorRef.current?.innerHTML || "";
       contentRef.current = html;
       scheduleAutoSave(title, html, observation);
+      updateToc();
     }, 50);
   };
 
@@ -101,6 +128,33 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
     const html = editorRef.current?.innerHTML || "";
     contentRef.current = html;
     scheduleAutoSave(title, html, observation);
+    updateToc();
+  };
+
+  // --- Stable ref for exec (used in keyboard shortcut effect) ---
+  const execRef = useRef(exec);
+  execRef.current = exec;
+
+  // --- KEYBOARD SHORTCUTS: Cmd+Option+1/2/3 for H1/H2/H3 ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.altKey) {
+        const map: Record<string, string> = { Digit1: "h1", Digit2: "h2", Digit3: "h3" };
+        const tag = map[e.code];
+        if (tag) {
+          e.preventDefault();
+          execRef.current("formatBlock", tag);
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // --- TOC click → scroll to heading ---
+  const scrollToHeading = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   // --- TAG HANDLERS ---
@@ -198,6 +252,19 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
       {/* RIBBON */}
       <div className="bg-neutral-900 border-b border-neutral-800 px-3 py-2 overflow-x-auto">
         <div className="flex items-center gap-1 min-w-max">
+          {/* TOC toggle */}
+          <button
+            onClick={() => setTocOpen((v) => !v)}
+            title={tocOpen ? "Masquer le plan" : "Afficher le plan"}
+            className={`px-2.5 py-1.5 text-sm rounded hover:bg-neutral-700 transition-colors ${
+              tocOpen && tocEntries.length > 0 ? "text-blue-400 bg-neutral-800" : "text-neutral-300"
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h14" />
+            </svg>
+          </button>
+          <div className="w-px h-6 bg-neutral-700 mx-1.5" />
           {ribbonGroups.map((group, gi) => (
             <div key={gi} className="flex items-center">
               {gi > 0 && <div className="w-px h-6 bg-neutral-700 mx-1.5" />}
@@ -228,27 +295,57 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
         </div>
       </div>
 
-      {/* EDITOR */}
-      <div className="flex-1 overflow-y-auto bg-neutral-950">
-        <div className="max-w-4xl mx-auto p-6">
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={handleEditorInput}
-            className="min-h-[60vh] text-white text-base leading-relaxed outline-none
-              [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6
-              [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5
-              [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4
-              [&_p]:mb-3
-              [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3
-              [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3
-              [&_li]:mb-1
-              [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-neutral-400 [&_blockquote]:my-4
-              [&_pre]:bg-neutral-900 [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:my-4
-              [&_hr]:border-neutral-700 [&_hr]:my-6
-            "
-          />
+      {/* EDITOR AREA (TOC + CONTENT) */}
+      <div className="flex-1 overflow-hidden flex bg-neutral-950">
+        {/* TOC SIDEBAR — sticky, always visible */}
+        {tocOpen && tocEntries.length > 0 && (
+          <aside className="w-56 shrink-0 border-r border-neutral-800 bg-neutral-900/50 overflow-y-auto">
+            <div className="p-3">
+              <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3">Plan</div>
+              <nav className="space-y-0.5">
+                {tocEntries.map((entry) => (
+                  <button
+                    key={entry.id}
+                    onClick={() => scrollToHeading(entry.id)}
+                    className={`block w-full text-left truncate rounded px-2 py-1 hover:bg-neutral-800 transition-colors ${
+                      entry.level === 1
+                        ? "text-sm text-white font-semibold"
+                        : entry.level === 2
+                          ? "text-sm text-neutral-300 pl-4"
+                          : "text-xs text-neutral-400 pl-6"
+                    }`}
+                    title={entry.text}
+                  >
+                    {entry.text}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </aside>
+        )}
+
+        {/* EDITOR CONTENT */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-6">
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={handleEditorInput}
+              className="min-h-[60vh] text-white text-base leading-relaxed outline-none
+                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6
+                [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5
+                [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mb-2 [&_h3]:mt-4
+                [&_p]:mb-3
+                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3
+                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3
+                [&_li]:mb-1
+                [&_blockquote]:border-l-4 [&_blockquote]:border-blue-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-neutral-400 [&_blockquote]:my-4
+                [&_pre]:bg-neutral-900 [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:my-4
+                [&_hr]:border-neutral-700 [&_hr]:my-6
+              "
+            />
+          </div>
         </div>
       </div>
 
