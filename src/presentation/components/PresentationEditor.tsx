@@ -36,6 +36,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
 
   const [broadcasting, setBroadcasting] = useState(false);
+  const [nightMode, setNightMode] = useState(false);
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -134,6 +135,8 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         slides={slides}
         presentationTitle={docTitle}
         onBroadcast={() => setBroadcasting(true)}
+        nightMode={nightMode}
+        setNightMode={setNightMode}
       />
 
       <PresentationToolbar
@@ -155,6 +158,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
           setSelectedId={setSelectedElementId}
           editingId={editingElementId}
           setEditingId={setEditingElementId}
+          nightMode={nightMode}
         />
       </div>
 

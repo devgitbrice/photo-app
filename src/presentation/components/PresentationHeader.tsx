@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { Play, Moon, Sun } from "lucide-react";
 import type { Slide } from "../types";
 import ExportMenu from "./ExportMenu";
 
@@ -13,10 +13,12 @@ type Props = {
   slides: Slide[];
   presentationTitle: string;
   onBroadcast: () => void;
+  nightMode: boolean;
+  setNightMode: (v: boolean) => void;
 };
 
 export default function PresentationHeader({
-  title, setTitle, description, setDescription, onSave, status, slides, presentationTitle, onBroadcast,
+  title, setTitle, description, setDescription, onSave, status, slides, presentationTitle, onBroadcast, nightMode, setNightMode,
 }: Props) {
   return (
     <header className="border-b border-neutral-800 bg-neutral-900 px-4 py-3">
@@ -38,6 +40,17 @@ export default function PresentationHeader({
           />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setNightMode(!nightMode)}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              nightMode
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+            }`}
+          >
+            {nightMode ? <Sun size={14} /> : <Moon size={14} />}
+            {nightMode ? "Mode jour" : "Mode nuit"}
+          </button>
           <button
             onClick={onBroadcast}
             className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-700 transition-colors"
