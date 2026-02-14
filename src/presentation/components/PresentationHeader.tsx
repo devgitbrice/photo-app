@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Slide } from "../types";
+import ExportMenu from "./ExportMenu";
 
 type Props = {
   title: string;
@@ -7,11 +9,15 @@ type Props = {
   setDescription: (d: string) => void;
   onSave: () => void;
   status: "idle" | "saving";
+  slides: Slide[];
+  presentationTitle: string;
 };
 
-export default function PresentationHeader({ title, setTitle, description, setDescription, onSave, status }: Props) {
+export default function PresentationHeader({
+  title, setTitle, description, setDescription, onSave, status, slides, presentationTitle,
+}: Props) {
   return (
-    <header className="border-b border-neutral-800 bg-neutral-900 p-4">
+    <header className="border-b border-neutral-800 bg-neutral-900 px-4 py-3">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 space-y-1">
           <input
@@ -19,7 +25,7 @@ export default function PresentationHeader({ title, setTitle, description, setDe
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Titre de la présentation..."
-            className="w-full bg-transparent text-2xl font-bold text-white placeholder-neutral-600 outline-none"
+            className="w-full bg-transparent text-xl font-bold text-white placeholder-neutral-600 outline-none"
           />
           <input
             type="text"
@@ -29,14 +35,15 @@ export default function PresentationHeader({ title, setTitle, description, setDe
             className="w-full bg-transparent text-sm text-neutral-400 placeholder-neutral-700 outline-none"
           />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <ExportMenu slides={slides} title={presentationTitle} />
           <Link href="/mydrive" className="text-sm font-medium text-neutral-400 hover:text-white">
             Annuler
           </Link>
           <button
             onClick={onSave}
             disabled={!title.trim() || status === "saving"}
-            className="rounded-xl bg-orange-600 px-6 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
+            className="rounded-xl bg-orange-600 px-5 py-1.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
           >
             {status === "saving" ? "Sauvegarde..." : "Enregistrer"}
           </button>
