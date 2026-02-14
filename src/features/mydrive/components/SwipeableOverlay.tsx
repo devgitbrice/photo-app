@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { MyDriveItem, Tag } from "@/features/mydrive/types";
 import ImageEditor from "./ImageEditor";
 import TagSelector from "./TagSelector";
-import { updateDriveItemAction, updateDriveContentAction } from "@/features/mydrive/modify";
-import { supabase } from "@/lib/supabaseClient";
+import { replaceImageAction, updateDriveContentAction } from "@/features/mydrive/modify";
 
 // --- Utilitaires ---
 function filenameFromUrl(url: string | null | undefined, fallbackId: string) {
@@ -180,30 +179,16 @@ export default function SwipeableOverlay({
     }
     setIsSaving(true);
     try {
-      // Upload direct du blob vers Supabase Storage (sans passer par base64 + server action)
-      const { error: uploadError } = await supabase.storage
-        .from("MyDrive")
-        .upload(currentItem.image_path, blob, {
-          upsert: true,
-          contentType: "image/jpeg",
-          cacheControl: "3600",
-        });
+      // Envoyer le blob via FormData au server action (qui utilise le client admin)
+      const formData = new FormData();
+      formData.append("id", currentItem.id);
+      formData.append("imagePath", currentItem.image_path);
+      formData.append("file", blob, "image.jpg");
 
-      if (uploadError) {
-        console.error("Erreur upload Supabase:", uploadError);
-        alert(`Erreur upload : ${uploadError.message}`);
-        return;
-      }
+      const result = await replaceImageAction(formData);
 
-      // Récupérer la nouvelle URL publique avec cache buster
-      const { data } = supabase.storage.from("MyDrive").getPublicUrl(currentItem.image_path);
-      const newUrl = data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
-
-      if (newUrl) {
-        await updateDriveItemAction(currentItem.id, { image_url: newUrl });
-        if (onUpdate) {
-          onUpdate(currentItem.id, { image_url: newUrl } as Partial<MyDriveItem>);
-        }
+      if (result.success && result.newUrl && onUpdate) {
+        onUpdate(currentItem.id, { image_url: result.newUrl } as Partial<MyDriveItem>);
       }
 
       setEditorMode(null);

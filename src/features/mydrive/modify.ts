@@ -1,6 +1,7 @@
 "use server";
 
 import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -22,22 +23,23 @@ export async function updateDriveItemAction(id: string, updates: Record<string, 
 
 /**
  * REMPLACER UNE IMAGE DANS LE STORAGE ET LA DB
+ * Utilise le client admin (service role) pour bypasser RLS sur le storage
  */
-export async function replaceImageAction(id: string, imagePath: string, imageData: string) {
-  if (!imagePath) {
-    throw new Error("Chemin de l'image manquant");
+export async function replaceImageAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  const imagePath = formData.get("imagePath") as string;
+  const file = formData.get("file") as File;
+
+  if (!id || !imagePath || !file) {
+    throw new Error("Paramètres manquants (id, imagePath ou file)");
   }
 
-  const parts = imageData.split(",");
-  if (parts.length < 2 || !parts[1]) {
-    throw new Error("Données image invalides");
-  }
-  const bytes = Buffer.from(parts[1], "base64");
+  const buffer = Buffer.from(await file.arrayBuffer());
 
-  // 1. Upload le nouveau fichier (upsert remplace l'ancien directement)
-  const { error: uploadError } = await supabase.storage
+  // 1. Upload avec le client admin (bypass RLS)
+  const { error: uploadError } = await supabaseAdmin.storage
     .from("MyDrive")
-    .upload(imagePath, bytes, {
+    .upload(imagePath, buffer, {
       upsert: true,
       contentType: "image/jpeg",
       cacheControl: "3600",
@@ -45,11 +47,11 @@ export async function replaceImageAction(id: string, imagePath: string, imageDat
 
   if (uploadError) {
     console.error("Erreur upload nouveau fichier:", uploadError);
-    throw new Error("Erreur lors de l'upload du nouveau fichier");
+    throw new Error(`Erreur upload: ${uploadError.message}`);
   }
 
-  // 3. Update URL avec cache buster
-  const { data } = supabase.storage.from("MyDrive").getPublicUrl(imagePath);
+  // 2. Update URL avec cache buster
+  const { data } = supabaseAdmin.storage.from("MyDrive").getPublicUrl(imagePath);
   const newUrl = data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
 
   if (newUrl) {
