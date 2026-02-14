@@ -57,11 +57,6 @@ export default function MindMapNode({ data, selected }: NodeProps) {
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Context menu state
-  const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
-  const contextMenuRef = useRef<HTMLDivElement>(null);
-
   // Link search state
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,14 +79,6 @@ export default function MindMapNode({ data, selected }: NodeProps) {
       searchInputRef.current.focus();
     }
   }, [showSearch]);
-
-  // Close context menu when clicking outside
-  useEffect(() => {
-    if (!showContextMenu) return;
-    const handleClick = () => setShowContextMenu(false);
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showContextMenu]);
 
   // Close search when clicking outside
   useEffect(() => {
@@ -238,14 +225,12 @@ export default function MindMapNode({ data, selected }: NodeProps) {
   };
 
   return (
-    <div className="flex flex-col items-center relative">
+    <div className="flex flex-col items-center">
       {/* Bubble */}
       <div
-        onContextMenu={(e) => {
-          e.preventDefault();
+        onDoubleClick={(e) => {
           e.stopPropagation();
-          setContextMenuPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
-          setShowContextMenu(true);
+          setIsEditing(true);
         }}
         className={`
           px-4 py-2 rounded-lg border shadow-lg relative
@@ -292,27 +277,6 @@ export default function MindMapNode({ data, selected }: NodeProps) {
           position={Position.Right}
           className="!w-3 !h-3 !bg-blue-500 !border-none"
         />
-
-        {/* Context menu */}
-        {showContextMenu && (
-          <div
-            ref={contextMenuRef}
-            className="absolute bg-neutral-800 border border-neutral-600 rounded-md shadow-xl z-50 py-1 min-w-[120px]"
-            style={{ top: contextMenuPos.y, left: contextMenuPos.x }}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowContextMenu(false);
-                setIsEditing(true);
-              }}
-              className="w-full text-left px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-700 hover:text-white transition-colors cursor-pointer"
-            >
-              Éditer
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Links display + New Link button */}
