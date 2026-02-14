@@ -1,0 +1,101 @@
+/*
+ * Handsontable dark theme overrides
+ * Counters Tailwind CSS 4 preflight resets on table elements
+ */
+
+/* Restore table structure that Tailwind preflight removes */
+.handsontable table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.handsontable th,
+.handsontable td {
+  text-align: left;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+/* Dark theme */
+.handsontable {
+  color: #fff !important;
+  font-size: 13px;
+}
+
+.handsontable .htCore {
+  background-color: #0a0a0a !important;
+}
+
+.handsontable th,
+.handsontable td {
+  background-color: #0a0a0a !important;
+  color: #fff !important;
+  border: 1px solid #333 !important;
+}
+
+.handsontable th {
+  background-color: #171717 !important;
+  color: #aaa !important;
+  font-weight: 600;
+}
+
+/* Row/column headers */
+.handsontable thead th {
+  background-color: #171717 !important;
+  border-bottom: 2px solid #444 !important;
+}
+
+.handsontable tbody th {
+  background-color: #171717 !important;
+  border-right: 2px solid #444 !important;
+}
+
+/* Selection highlight */
+.handsontable td.area {
+  background-color: #1e3a5f !important;
+}
+
+.handsontable td.current {
+  outline: 2px solid #3b82f6;
+}
+
+/* Active editor input */
+.handsontable .handsontableInput {
+  background-color: #1a1a1a !important;
+  color: #fff !important;
+  border: 2px solid #3b82f6 !important;
+  outline: none;
+  font-size: 13px;
+}
+
+/* Context menu dark theme */
+.htContextMenu .ht_master table {
+  background-color: #1a1a1a !important;
+}
+
+.htContextMenu .ht_master td {
+  background-color: #1a1a1a !important;
+  color: #ddd !important;
+  border: none !important;
+}
+
+.htContextMenu .ht_master td:hover,
+.htContextMenu .ht_master td.current {
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
+
+.htContextMenu .htSeparator td {
+  border-bottom: 1px solid #333 !important;
+}
+
+/* Ensure scrollbars work */
+.ht_master .wtHolder {
+  overflow: auto !important;
+}
+
+/* Corner element */
+.handsontable .ht_clone_top_inline_start_corner th {
+  background-color: #171717 !important;
+}
