@@ -228,7 +228,10 @@ export default function MindMapNode({ data, selected }: NodeProps) {
     <div className="flex flex-col items-center">
       {/* Bubble */}
       <div
-        onDoubleClick={() => setIsEditing(true)}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setIsEditing(true);
+        }}
         className={`
           px-4 py-2 rounded-lg border shadow-lg relative
           min-w-[150px] h-[50px] flex items-center justify-center transition-all duration-200
@@ -255,7 +258,11 @@ export default function MindMapNode({ data, selected }: NodeProps) {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             onBlur={finishEditing}
-            onKeyDown={onKeyDown}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              onKeyDown(e);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
             className="w-full text-center text-sm outline-none bg-transparent text-white font-medium"
           />
         ) : (
