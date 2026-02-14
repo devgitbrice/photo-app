@@ -12,6 +12,7 @@ type Props = {
   setSelectedId: (id: string | null) => void;
   editingId: string | null;
   setEditingId: (id: string | null) => void;
+  nightMode?: boolean;
 };
 
 type DragState = {
@@ -26,7 +27,7 @@ type DragState = {
 const HANDLE_SIZE = 8;
 const HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
-export default function SlideCanvas({ slide, updateSlide, selectedId, setSelectedId, editingId, setEditingId }: Props) {
+export default function SlideCanvas({ slide, updateSlide, selectedId, setSelectedId, editingId, setEditingId, nightMode }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
 
@@ -270,6 +271,7 @@ export default function SlideCanvas({ slide, updateSlide, selectedId, setSelecte
             objectFit: el.objectFit || "contain",
             borderRadius: s.borderRadius || 0,
             opacity: s.opacity ?? 1,
+            filter: nightMode ? "invert(1)" : "none",
           }}
         />
       );
@@ -341,7 +343,10 @@ export default function SlideCanvas({ slide, updateSlide, selectedId, setSelecte
         ref={canvasRef}
         id="slide-canvas"
         className="aspect-video w-full max-w-4xl relative overflow-hidden shadow-2xl rounded-sm select-none"
-        style={{ backgroundColor: slide.backgroundColor || "#ffffff" }}
+        style={{
+          backgroundColor: slide.backgroundColor || "#ffffff",
+          filter: nightMode ? "invert(1)" : "none",
+        }}
         onClick={(e) => {
           if (e.target === canvasRef.current) {
             setSelectedId(null);
