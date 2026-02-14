@@ -15,7 +15,7 @@ export default function HomePage() {
           href="/quickscan"
           className="block w-full rounded-2xl px-6 py-5 text-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
         >
-          Quick Scan
+          Quick Scan !
         </Link>
 
         <AddButtonWithCamera />
