@@ -123,7 +123,8 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
       x: 30, y: 25, width: 25, height: 40,
       rotation: 0, zIndex: 0,
       shapeType,
-      style: { fill: "#3b82f6", stroke: "#1d4ed8", strokeWidth: 2 },
+      content: shapeType === "callout" ? "Texte" : "",
+      style: { fill: "#3b82f6", stroke: "#1d4ed8", strokeWidth: 2, color: "#ffffff", fontSize: 14 },
     });
   };
 
@@ -272,7 +273,7 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
       {selectedEl && (
         <>
           {/* Text formatting */}
-          {(selectedEl.type === "text" || selectedEl.type === "table") && (
+          {(selectedEl.type === "text" || selectedEl.type === "table" || selectedEl.type === "shape") && (
             <div className="flex items-center gap-1 border-r border-neutral-700 pr-3 mr-2">
               {/* Font family */}
               <select
