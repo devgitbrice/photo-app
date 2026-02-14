@@ -69,6 +69,16 @@ function MindmapFlow({
 
   const nodeTypes = useMemo(() => ({ mindmap: MindMapNode }), []);
 
+  // Track drag start position to distinguish clicks from real drags
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const onNodeDragStart = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      dragStartPos.current = { x: node.position.x, y: node.position.y };
+    },
+    []
+  );
+
   // Stable callback for link changes - setNodes is stable from useNodesState
   const handleLinksChange = useCallback(
     (nodeId: string, updatedLinks: any[]) => {
@@ -133,6 +143,26 @@ function MindmapFlow({
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, draggedNode: Node) => {
       if (draggedNode.data.isRoot) return;
+
+      // Ignore small movements (clicks) - minimum 20px drag distance
+      if (dragStartPos.current) {
+        const dx = draggedNode.position.x - dragStartPos.current.x;
+        const dy = draggedNode.position.y - dragStartPos.current.y;
+        const dragDistance = Math.sqrt(dx * dx + dy * dy);
+        if (dragDistance < 20) {
+          // Reset to original position - it was just a click
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === draggedNode.id
+                ? { ...n, position: { ...dragStartPos.current! } }
+                : n
+            )
+          );
+          dragStartPos.current = null;
+          return;
+        }
+      }
+      dragStartPos.current = null;
 
       const draggedNodeCenter = {
         x: draggedNode.position.x + 90,
@@ -257,6 +287,7 @@ function MindmapFlow({
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
