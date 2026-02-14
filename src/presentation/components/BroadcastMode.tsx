@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Slide, SlideElement } from "../types";
 import { ICON_MAP } from "./IconMap";
@@ -14,11 +14,31 @@ type Props = {
   nightMode?: boolean;
 };
 
+// Fixed design resolution matching the normal editor (max-w-4xl = 896px, 16:9)
+const DESIGN_W = 896;
+const DESIGN_H = 504;
+
 export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesChange, nightMode }: Props) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
   const slide = slides[currentIndex];
+
+  // Calculate scale to fit the design resolution into the available space
+  useEffect(() => {
+    const updateScale = () => {
+      if (!containerRef.current) return;
+      const { clientWidth, clientHeight } = containerRef.current;
+      const sw = clientWidth / DESIGN_W;
+      const sh = clientHeight / DESIGN_H;
+      setScale(Math.min(sw, sh));
+    };
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
 
   const goNext = useCallback(() => {
     if (currentIndex < slides.length - 1) {
@@ -256,12 +276,15 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
       </div>
 
       {/* Slide area */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div ref={containerRef} className="flex-1 flex items-center justify-center p-4">
         <div
-          className="aspect-video w-full max-h-full relative overflow-hidden rounded shadow-2xl"
+          className="relative overflow-hidden rounded shadow-2xl"
           style={{
+            width: DESIGN_W,
+            height: DESIGN_H,
             backgroundColor: slide.backgroundColor || "#ffffff",
-            maxWidth: "100vw",
+            transform: `scale(${scale})`,
+            transformOrigin: "center center",
             filter: nightMode ? "invert(1)" : "none",
           }}
         >

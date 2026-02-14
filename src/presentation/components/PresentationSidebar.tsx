@@ -9,9 +9,10 @@ type Props = {
   setSlides: (s: Slide[]) => void;
   currentIndex: number;
   setCurrentIndex: (i: number) => void;
+  nightMode?: boolean;
 };
 
-export default function PresentationSidebar({ slides, setSlides, currentIndex, setCurrentIndex }: Props) {
+export default function PresentationSidebar({ slides, setSlides, currentIndex, setCurrentIndex, nightMode }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
@@ -145,7 +146,10 @@ export default function PresentationSidebar({ slides, setSlides, currentIndex, s
               {/* Mini preview of elements */}
               <div
                 className="w-full h-full relative"
-                style={{ backgroundColor: slide.backgroundColor || "#ffffff" }}
+                style={{
+                  backgroundColor: slide.backgroundColor || "#ffffff",
+                  filter: nightMode ? "invert(1)" : "none",
+                }}
               >
                 {slide.elements
                   .sort((a, b) => a.zIndex - b.zIndex)
@@ -175,7 +179,8 @@ export default function PresentationSidebar({ slides, setSlides, currentIndex, s
                         </div>
                       )}
                       {el.type === "image" && (
-                        <img src={el.src} alt="" className="w-full h-full object-contain" draggable={false} />
+                        <img src={el.src} alt="" className="w-full h-full object-contain" draggable={false}
+                          style={{ filter: nightMode ? "invert(1)" : "none" }} />
                       )}
                       {el.type === "shape" && (
                         <div className="w-full h-full" style={{ backgroundColor: el.style.fill || "#3b82f6", borderRadius: el.shapeType === "circle" ? "50%" : 0 }} />

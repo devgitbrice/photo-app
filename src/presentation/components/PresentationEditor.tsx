@@ -151,6 +151,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         <PresentationSidebar
           slides={slides} setSlides={setSlides}
           currentIndex={currentIndex} setCurrentIndex={setCurrentIndex}
+          nightMode={nightMode}
         />
         <SlideCanvas
           slide={currentSlide}
