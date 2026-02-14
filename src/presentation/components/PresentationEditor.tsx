@@ -8,6 +8,7 @@ import PresentationSidebar from "./PresentationSidebar";
 import PresentationToolbar from "./PresentationToolbar";
 import SlideCanvas from "./SlideCanvas";
 import PresentationTags from "./PresentationTags";
+import BroadcastMode from "./BroadcastMode";
 import type { Tag } from "@/features/mydrive/types";
 import type { Slide } from "../types";
 import { parseSlides, createDefaultSlide } from "../types";
@@ -33,6 +34,8 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
+
+  const [broadcasting, setBroadcasting] = useState(false);
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -115,12 +118,22 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
 
   return (
     <div className="flex flex-col h-full w-full bg-neutral-900 text-white">
+      {broadcasting && (
+        <BroadcastMode
+          slides={slides}
+          initialIndex={currentIndex}
+          onClose={() => setBroadcasting(false)}
+          onSlidesChange={setSlides}
+        />
+      )}
+
       <PresentationHeader
         title={docTitle} setTitle={setDocTitle}
         description={description} setDescription={setDescription}
         onSave={handleSave} status={status}
         slides={slides}
         presentationTitle={docTitle}
+        onBroadcast={() => setBroadcasting(true)}
       />
 
       <PresentationToolbar

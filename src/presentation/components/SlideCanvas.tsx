@@ -150,6 +150,58 @@ export default function SlideCanvas({ slide, updateSlide, selectedId, setSelecte
     return m[handle];
   };
 
+  // ─── Text keydown: Enter = newline + auto-bullets, Space = auto-bullet conversion ──
+  const handleTextKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, el: SlideElement) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const node = sel.anchorNode;
+      const offset = sel.anchorOffset;
+      const text = node?.textContent || "";
+      const beforeCursor = text.slice(0, offset);
+      const lastNL = beforeCursor.lastIndexOf("\n");
+      const currentLine = beforeCursor.slice(lastNL + 1);
+
+      let prefix = "";
+      const numMatch = currentLine.match(/^(\d+)\.\s/);
+      if (numMatch) {
+        // If the line is ONLY the number prefix (empty bullet), don't continue
+        const lineContent = currentLine.slice(numMatch[0].length);
+        if (lineContent.trim().length > 0) {
+          prefix = `${parseInt(numMatch[1]) + 1}. `;
+        }
+      } else if (currentLine.match(/^[•]\s/)) {
+        const lineContent = currentLine.slice(2);
+        if (lineContent.trim().length > 0) {
+          prefix = "\u2022 ";
+        }
+      }
+      document.execCommand("insertText", false, "\n" + prefix);
+    }
+
+    if (e.key === " ") {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const node = sel.anchorNode;
+      const offset = sel.anchorOffset;
+      const text = node?.textContent || "";
+      const beforeCursor = text.slice(0, offset);
+      const lastNL = beforeCursor.lastIndexOf("\n");
+      const lineBeforeCursor = beforeCursor.slice(lastNL + 1);
+
+      if (lineBeforeCursor === "-" || lineBeforeCursor === "*") {
+        e.preventDefault();
+        const range = sel.getRangeAt(0);
+        range.setStart(node!, offset - 1);
+        range.setEnd(node!, offset);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand("insertText", false, "\u2022 ");
+      }
+    }
+  };
+
   // ─── Render element content ────────────────────────────────
   const renderContent = (el: SlideElement) => {
     const s = el.style;
@@ -168,6 +220,7 @@ export default function SlideCanvas({ slide, updateSlide, selectedId, setSelecte
             e.stopPropagation();
             setEditingId(el.id);
           }}
+          onKeyDown={isEditing ? (e) => handleTextKeyDown(e, el) : undefined}
           style={{
             width: "100%", height: "100%",
             fontSize: s.fontSize || 18,

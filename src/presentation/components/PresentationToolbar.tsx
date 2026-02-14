@@ -6,6 +6,7 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Columns2, Trash2, Copy, ArrowUpToLine, ArrowDownToLine,
   Palette, ChevronDown, RotateCcw,
+  HardDrive, Search, Banana,
 } from "lucide-react";
 import type { Slide, SlideElement, ElementStyle, ShapeType } from "../types";
 import {
@@ -181,9 +182,35 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
       <div className="flex items-center gap-1 border-r border-neutral-700 pr-3 mr-2">
         <Btn onClick={addText} title="Zone de texte"><Type size={16} /></Btn>
 
-        <Btn onClick={() => fileInputRef.current?.click()} title="Image locale">
-          <ImageIcon size={16} />
-        </Btn>
+        <div className="relative">
+          <Btn onClick={() => setOpenMenu(openMenu === "image" ? null : "image")} title="Image">
+            <span className="flex items-center gap-0.5"><ImageIcon size={16} /><ChevronDown size={10} /></span>
+          </Btn>
+          <Dropdown name="image">
+            <button
+              onClick={() => { fileInputRef.current?.click(); setOpenMenu(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded"
+            >
+              <HardDrive size={14} /> Image locale
+            </button>
+            <button
+              onClick={() => {
+                window.open("https://images.google.com", "_blank");
+                setOpenMenu(null);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded"
+            >
+              <Search size={14} /> Google Images
+            </button>
+            <button
+              disabled
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-500 rounded cursor-not-allowed"
+            >
+              <Banana size={14} /> Nano banana
+              <span className="text-[10px] text-neutral-600 ml-auto">bientot</span>
+            </button>
+          </Dropdown>
+        </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
         <div className="relative">
