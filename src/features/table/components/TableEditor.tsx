@@ -4,19 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createDocRow } from "@/lib/createDocRow";
 import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/modify";
-import dynamic from "next/dynamic";
 import TableHeader from "./TableHeader";
+import TableGrid from "./TableGrid";
 import TableTags from "./TableTags";
 import type { Tag } from "@/features/mydrive/types";
-
-const TableGrid = dynamic(() => import("./TableGrid"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-full text-neutral-500">
-      Chargement de la grille...
-    </div>
-  ),
-});
 
 interface TableEditorProps {
   initialData?: {
