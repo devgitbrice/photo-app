@@ -125,6 +125,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
           initialIndex={currentIndex}
           onClose={() => setBroadcasting(false)}
           onSlidesChange={setSlides}
+          nightMode={nightMode}
         />
       )}
 

@@ -11,9 +11,10 @@ type Props = {
   initialIndex: number;
   onClose: () => void;
   onSlidesChange: (slides: Slide[]) => void;
+  nightMode?: boolean;
 };
 
-export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesChange }: Props) {
+export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesChange, nightMode }: Props) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -180,6 +181,7 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
             objectFit: el.objectFit || "contain",
             borderRadius: s.borderRadius || 0,
             opacity: s.opacity ?? 1,
+            filter: nightMode ? "invert(1)" : "none",
           }}
         />
       );
@@ -260,6 +262,7 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
           style={{
             backgroundColor: slide.backgroundColor || "#ffffff",
             maxWidth: "100vw",
+            filter: nightMode ? "invert(1)" : "none",
           }}
         >
           {[...slide.elements]
