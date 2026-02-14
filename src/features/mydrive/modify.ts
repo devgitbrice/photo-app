@@ -1,7 +1,6 @@
 "use server";
 
 import { supabase } from "@/lib/supabaseClient";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -23,7 +22,6 @@ export async function updateDriveItemAction(id: string, updates: Record<string, 
 
 /**
  * REMPLACER UNE IMAGE DANS LE STORAGE ET LA DB
- * Utilise le client admin (service role) pour bypasser RLS sur le storage
  */
 export async function replaceImageAction(formData: FormData) {
   const id = formData.get("id") as string;
@@ -36,8 +34,8 @@ export async function replaceImageAction(formData: FormData) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  // 1. Upload avec le client admin (bypass RLS)
-  const { error: uploadError } = await supabaseAdmin.storage
+  // 1. Upload le nouveau fichier (upsert remplace l'ancien)
+  const { error: uploadError } = await supabase.storage
     .from("MyDrive")
     .upload(imagePath, buffer, {
       upsert: true,
@@ -51,7 +49,7 @@ export async function replaceImageAction(formData: FormData) {
   }
 
   // 2. Update URL avec cache buster
-  const { data } = supabaseAdmin.storage.from("MyDrive").getPublicUrl(imagePath);
+  const { data } = supabase.storage.from("MyDrive").getPublicUrl(imagePath);
   const newUrl = data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
 
   if (newUrl) {
