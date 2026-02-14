@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Node, Edge } from "reactflow"; // <--- AJOUTÉ : Import des types
+import { Node, Edge } from "reactflow";
 import MindmapCanvas from "./MindmapCanvas";
 import TagSelector from "@/features/mydrive/components/TagSelector";
-import { updateDriveItemAction } from "@/features/mydrive/modify";
+import { updateDriveItemAction, createMindmapAction } from "@/features/mydrive/modify";
 import { Tag } from "@/features/mydrive/types";
 
-// --- AJOUTÉ : Interface pour valider les props ---
 interface MindmapEditorProps {
   allTags: Tag[];
   initialData: {
@@ -27,54 +26,64 @@ export default function MindmapEditor({ allTags, initialData }: MindmapEditorPro
   const [description, setDescription] = useState(initialData.observation || "");
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData.tags || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [itemId, setItemId] = useState(initialData.id);
 
-  // Parsing sécurisé du contenu initial
   const mapDataRef = useRef<{ nodes: Node[]; edges: Edge[] }>(
-    initialData.content 
-      ? JSON.parse(initialData.content) 
+    initialData.content
+      ? JSON.parse(initialData.content)
       : { nodes: [], edges: [] }
   );
 
+  // Auto-save timer
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
-
-
-
-
-const handleSave = async () => {
+  const doSave = useCallback(async () => {
+    if (isSaving) return;
     setIsSaving(true);
     try {
       const contentToSave = JSON.stringify(mapDataRef.current);
-      
-      if (initialData.id) {
-        // MODE ÉDITION (Update)
-        await updateDriveItemAction(initialData.id, {
+
+      if (itemId) {
+        await updateDriveItemAction(itemId, {
           title,
           observation: description,
           content: contentToSave,
         });
-        alert("✅ Mindmap mise à jour !");
       } else {
-        // MODE CRÉATION (New)
-        // Utilise ici ta fonction de création (ex: createPythonScriptAction mais adaptée ou une générique)
-        // Si tu n'as pas encore d'action générique, tu peux en créer une ou utiliser celle-ci :
-        alert("🔧 Logique de création à connecter ici");
+        const result = await createMindmapAction({
+          title,
+          content: contentToSave,
+          observation: description,
+        });
+        setItemId(result.id);
+        router.replace(`/editmindmap/${result.id}`);
       }
-
-      router.refresh(); 
-    } catch (e) {
-      alert("❌ Erreur de sauvegarde");
+    } catch {
+      // silent save
     } finally {
       setIsSaving(false);
     }
+  }, [itemId, title, description, isSaving, router]);
+
+  // Debounced auto-save when data changes
+  const scheduleAutoSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      doSave();
+    }, 2000);
+  }, [doSave]);
+
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  const handleSave = async () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    await doSave();
   };
-
-
-
-
-
-
-
 
   return (
     <div className="flex flex-col h-screen bg-neutral-950 text-neutral-200 overflow-hidden font-sans">
@@ -86,40 +95,48 @@ const handleSave = async () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              scheduleAutoSave();
+            }}
             className="bg-transparent text-xl font-bold text-white outline-none border-b border-transparent focus:border-purple-500/50 flex-1 transition-all"
             placeholder="Titre de la mindmap..."
           />
         </div>
-        <button 
-          onClick={handleSave} 
-          disabled={isSaving}
-          className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 px-6 py-2 rounded-full font-bold text-white shadow-lg transition-all active:scale-95"
-        >
-          {isSaving ? "Sauvegarde..." : "💾 Mettre à jour"}
-        </button>
+        <div className="flex items-center gap-2">
+          {isSaving && (
+            <span className="text-xs text-neutral-500">Sauvegarde...</span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 px-6 py-2 rounded-full font-bold text-white shadow-lg transition-all active:scale-95"
+          >
+            {isSaving ? "Sauvegarde..." : "Sauvegarder"}
+          </button>
+        </div>
       </div>
 
       {/* ZONE CANVAS */}
       <div className="flex-1 relative">
-        <MindmapCanvas 
-          initialNodes={mapDataRef.current.nodes} 
-          initialEdges={mapDataRef.current.edges} 
-          // --- FIX ICI : Typage explicite des paramètres ---
+        <MindmapCanvas
+          initialNodes={mapDataRef.current.nodes}
+          initialEdges={mapDataRef.current.edges}
           onDataChange={(nodes: Node[], edges: Edge[]) => {
             mapDataRef.current = { nodes, edges };
-          }} 
+            scheduleAutoSave();
+          }}
         />
       </div>
 
       {/* FOOTER */}
       <div className="p-3 bg-neutral-900 border-t border-neutral-800 z-10">
-        <TagSelector 
-          itemId={initialData.id} 
-          itemTags={selectedTags} 
+        <TagSelector
+          itemId={itemId}
+          itemTags={selectedTags}
           allTags={allTags}
           onTagsChange={(_, tags) => setSelectedTags(tags)}
           onNewTagCreated={(tag) => setSelectedTags([...selectedTags, tag])}

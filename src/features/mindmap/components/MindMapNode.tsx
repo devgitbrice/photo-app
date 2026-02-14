@@ -8,6 +8,7 @@ export interface NodeLink {
   id: string;
   title: string;
   doc_type: string;
+  url?: string; // For external URL links
 }
 
 interface SearchResult {
@@ -16,7 +17,31 @@ interface SearchResult {
   doc_type: string;
 }
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  doc: "Doc",
+  python: "Python",
+  table: "Table",
+  mindmap: "Mindmap",
+  presentation: "Présentation",
+  scan: "PDF",
+  url: "URL",
+};
+
+function isUrl(str: string): boolean {
+  try {
+    const trimmed = str.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      new URL(trimmed);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function getLinkHref(link: NodeLink): string | null {
+  if (link.doc_type === "url" && link.url) return link.url;
   switch (link.doc_type) {
     case "python": return `/editpython/${link.id}`;
     case "doc": return `/editdoc/${link.id}`;
@@ -88,6 +113,12 @@ export default function MindMapNode({ data, selected }: NodeProps) {
       return;
     }
 
+    // Don't search if it's a URL
+    if (isUrl(query)) {
+      setSearchResults([]);
+      return;
+    }
+
     setIsSearching(true);
     try {
       const { data: results, error } = await supabase
@@ -97,7 +128,6 @@ export default function MindMapNode({ data, selected }: NodeProps) {
         .limit(8);
 
       if (!error && results) {
-        // Filter out already linked items
         const existingIds = new Set(links.map((l) => l.id));
         setSearchResults(
           results
@@ -110,13 +140,13 @@ export default function MindMapNode({ data, selected }: NodeProps) {
         );
       }
     } catch {
-      // ignore search errors
+      // ignore
     } finally {
       setIsSearching(false);
     }
   }, [links]);
 
-  // Add a link to this node
+  // Add a MyDrive link
   const addLink = (result: SearchResult) => {
     const newLink: NodeLink = {
       id: result.id,
@@ -131,6 +161,50 @@ export default function MindMapNode({ data, selected }: NodeProps) {
     setSearchQuery("");
     setSearchResults([]);
     setShowSearch(false);
+  };
+
+  // Add a URL link
+  const addUrlLink = (url: string) => {
+    const trimmed = url.trim();
+    // Extract a readable title from the URL
+    let title: string;
+    try {
+      const parsed = new URL(trimmed);
+      title = parsed.hostname.replace("www.", "");
+    } catch {
+      title = trimmed;
+    }
+    const newLink: NodeLink = {
+      id: `url-${Date.now()}`,
+      title,
+      doc_type: "url",
+      url: trimmed,
+    };
+    const updatedLinks = [...links, newLink];
+    data.links = updatedLinks;
+    if (data.onLinksChange) {
+      data.onLinksChange(updatedLinks);
+    }
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearch(false);
+  };
+
+  // Handle Enter in search input
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key === "Enter" && searchQuery.trim()) {
+      if (isUrl(searchQuery)) {
+        addUrlLink(searchQuery);
+      } else if (searchResults.length > 0) {
+        addLink(searchResults[0]);
+      }
+    }
+    if (e.key === "Escape") {
+      setShowSearch(false);
+      setSearchQuery("");
+      setSearchResults([]);
+    }
   };
 
   // Remove a link
@@ -213,13 +287,16 @@ export default function MindMapNode({ data, selected }: NodeProps) {
                     e.stopPropagation();
                     openLink(link);
                   }}
-                  className="text-[10px] text-blue-400 hover:text-blue-300 hover:underline truncate max-w-[120px] text-left cursor-pointer transition-colors"
+                  className="text-[10px] text-blue-400 hover:text-blue-300 hover:underline truncate max-w-[100px] text-left cursor-pointer transition-colors"
                   title={link.title}
                 >
                   {link.title.length > 10
                     ? link.title.slice(0, 10) + "..."
                     : link.title}
                 </button>
+                <span className="text-[9px] text-neutral-500 shrink-0">
+                  {DOC_TYPE_LABELS[link.doc_type] || link.doc_type}
+                </span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -250,7 +327,7 @@ export default function MindMapNode({ data, selected }: NodeProps) {
         {showSearch && (
           <div
             ref={searchContainerRef}
-            className="mt-1 w-[200px] bg-neutral-800 border border-neutral-600 rounded-md shadow-xl z-50 self-end"
+            className="mt-1 w-[220px] bg-neutral-800 border border-neutral-600 rounded-md shadow-xl z-50 self-end"
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -259,10 +336,16 @@ export default function MindMapNode({ data, selected }: NodeProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              onKeyDown={(e) => e.stopPropagation()}
-              placeholder="Rechercher (3 lettres min)..."
+              onKeyDown={onSearchKeyDown}
+              placeholder="Rechercher ou coller une URL..."
               className="w-full px-2 py-1.5 text-xs bg-transparent text-white outline-none border-b border-neutral-700 placeholder-neutral-500"
             />
+            {/* URL hint */}
+            {isUrl(searchQuery) && (
+              <div className="px-2 py-1.5 text-[10px] text-green-400">
+                Appuyez Entrée pour ajouter cette URL
+              </div>
+            )}
             {isSearching && (
               <div className="px-2 py-1 text-[10px] text-neutral-500">
                 Recherche...
@@ -280,14 +363,14 @@ export default function MindMapNode({ data, selected }: NodeProps) {
                     className="w-full text-left px-2 py-1.5 text-xs text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <span className="text-[9px] text-neutral-500 uppercase shrink-0">
-                      {result.doc_type}
+                      {DOC_TYPE_LABELS[result.doc_type] || result.doc_type}
                     </span>
                     <span className="truncate">{result.title}</span>
                   </button>
                 ))}
               </div>
             )}
-            {searchQuery.length >= 3 && !isSearching && searchResults.length === 0 && (
+            {searchQuery.length >= 3 && !isUrl(searchQuery) && !isSearching && searchResults.length === 0 && (
               <div className="px-2 py-1.5 text-[10px] text-neutral-500">
                 Aucun résultat
               </div>

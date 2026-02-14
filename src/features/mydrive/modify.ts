@@ -159,6 +159,37 @@ export async function deleteDriveItemAction(id: string, imagePath: string) {
 }
 
 /**
+ * --- CRÉATION MINDMAP ---
+ */
+export async function createMindmapAction(input: {
+  title: string;
+  content: string;
+  observation?: string;
+}) {
+  const { data, error } = await supabase
+    .from("MyDrive")
+    .insert([
+      {
+        title: input.title,
+        content: input.content,
+        observation: input.observation || "",
+        doc_type: "mindmap",
+        type: "file",
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("ERREUR CRÉATION MINDMAP (Supabase):", error.message, error.details);
+    throw new Error(`Erreur Supabase: ${error.message}`);
+  }
+
+  revalidatePath("/app/mydrive");
+  return { success: true, id: data.id };
+}
+
+/**
  * --- CRÉATION SCRIPT PYTHON ---
  */
 export async function createPythonScriptAction(input: {
