@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { HotTable, HotTableClass } from '@handsontable/react';
+import { useRef } from 'react';
+import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import { HyperFormula } from 'hyperformula';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 
 // CSS: Handsontable base + dark theme overrides
 import 'handsontable/dist/handsontable.full.min.css';
@@ -11,25 +12,12 @@ import './TableGrid.css';
 
 registerAllModules();
 
+const hfInstance = HyperFormula.buildEmpty({
+  licenseKey: 'internal-use-in-handsontable',
+});
+
 export default function TableGrid({ data, setData }: { data: any[]; setData: (d: any[]) => void }) {
-  const [isMounted, setIsMounted] = useState(false);
-  const hotRef = useRef<HotTableClass>(null);
-  const hfRef = useRef<HyperFormula | null>(null);
-
-  // Create HyperFormula instance once
-  if (!hfRef.current) {
-    hfRef.current = HyperFormula.buildEmpty({
-      licenseKey: 'internal-use-in-handsontable',
-    });
-  }
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return <div className="p-4 text-neutral-500">Chargement de la grille...</div>;
-  }
+  const hotRef = useRef<HotTableRef>(null);
 
   return (
     <div className="absolute inset-0 overflow-auto">
@@ -41,7 +29,7 @@ export default function TableGrid({ data, setData }: { data: any[]; setData: (d:
         height="100%"
         width="100%"
         licenseKey="non-commercial-and-evaluation"
-        formulas={{ engine: hfRef.current }}
+        formulas={{ engine: hfInstance }}
         manualColumnResize={true}
         contextMenu={true}
         stretchH="all"
