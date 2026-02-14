@@ -33,8 +33,12 @@ export default function ImageEditor({ imageUrl, mode, onSave, onCancel }: Props)
     img.onload = () => {
       setImage(img);
     };
+    img.onerror = () => {
+      alert("Impossible de charger l'image. Veuillez réessayer.");
+      onCancel();
+    };
     img.src = imageUrl;
-  }, [imageUrl]);
+  }, [imageUrl, onCancel]);
 
   // Calculate display size and draw
   useEffect(() => {
@@ -263,52 +267,62 @@ export default function ImageEditor({ imageUrl, mode, onSave, onCancel }: Props)
   const handleConfirmSave = async () => {
     if (!image) return;
 
-    const outputCanvas = document.createElement("canvas");
-    const ctx = outputCanvas.getContext("2d");
-    if (!ctx) return;
-
-    if (mode === "crop") {
-      // Calculate original image coordinates from display coordinates
-      const scaleX = image.width / displaySize.width;
-      const scaleY = image.height / displaySize.height;
-
-      const origX = cropArea.x * scaleX;
-      const origY = cropArea.y * scaleY;
-      const origWidth = cropArea.width * scaleX;
-      const origHeight = cropArea.height * scaleY;
-
-      outputCanvas.width = origWidth;
-      outputCanvas.height = origHeight;
-
-      ctx.drawImage(
-        image,
-        origX, origY, origWidth, origHeight,
-        0, 0, origWidth, origHeight
-      );
-    } else {
-      // Rotation
-      if (rotation === 90 || rotation === 270) {
-        outputCanvas.width = image.height;
-        outputCanvas.height = image.width;
-      } else {
-        outputCanvas.width = image.width;
-        outputCanvas.height = image.height;
+    try {
+      const outputCanvas = document.createElement("canvas");
+      const ctx = outputCanvas.getContext("2d");
+      if (!ctx) {
+        alert("Erreur : impossible de créer le canvas");
+        return;
       }
 
-      ctx.translate(outputCanvas.width / 2, outputCanvas.height / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.drawImage(image, -image.width / 2, -image.height / 2);
-    }
+      if (mode === "crop") {
+        // Calculate original image coordinates from display coordinates
+        const scaleX = image.width / displaySize.width;
+        const scaleY = image.height / displaySize.height;
 
-    outputCanvas.toBlob(
-      (blob) => {
-        if (blob) {
-          onSave(blob);
+        const origX = cropArea.x * scaleX;
+        const origY = cropArea.y * scaleY;
+        const origWidth = cropArea.width * scaleX;
+        const origHeight = cropArea.height * scaleY;
+
+        outputCanvas.width = origWidth;
+        outputCanvas.height = origHeight;
+
+        ctx.drawImage(
+          image,
+          origX, origY, origWidth, origHeight,
+          0, 0, origWidth, origHeight
+        );
+      } else {
+        // Rotation
+        if (rotation === 90 || rotation === 270) {
+          outputCanvas.width = image.height;
+          outputCanvas.height = image.width;
+        } else {
+          outputCanvas.width = image.width;
+          outputCanvas.height = image.height;
         }
-      },
-      "image/jpeg",
-      0.92
-    );
+
+        ctx.translate(outputCanvas.width / 2, outputCanvas.height / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.drawImage(image, -image.width / 2, -image.height / 2);
+      }
+
+      outputCanvas.toBlob(
+        (blob) => {
+          if (blob) {
+            onSave(blob);
+          } else {
+            alert("Erreur lors de la conversion de l'image. Veuillez réessayer.");
+          }
+        },
+        "image/jpeg",
+        0.92
+      );
+    } catch (error) {
+      console.error("Erreur lors de la transformation:", error);
+      alert("Erreur lors de la transformation de l'image. Veuillez réessayer.");
+    }
   };
 
   const getCursor = () => {
