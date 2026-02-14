@@ -24,20 +24,17 @@ export async function updateDriveItemAction(id: string, updates: Record<string, 
  * REMPLACER UNE IMAGE DANS LE STORAGE ET LA DB
  */
 export async function replaceImageAction(id: string, imagePath: string, imageData: string) {
-  const base64Data = imageData.split(",")[1];
-  const bytes = Buffer.from(base64Data, "base64");
-
-  // 1. Supprimer l'ancien fichier
-  const { error: deleteError } = await supabase.storage
-    .from("MyDrive")
-    .remove([imagePath]);
-
-  if (deleteError) {
-    console.error("Erreur suppression ancien fichier:", deleteError);
-    throw new Error("Erreur lors de la suppression de l'ancien fichier");
+  if (!imagePath) {
+    throw new Error("Chemin de l'image manquant");
   }
 
-  // 2. Upload le nouveau
+  const parts = imageData.split(",");
+  if (parts.length < 2 || !parts[1]) {
+    throw new Error("Données image invalides");
+  }
+  const bytes = Buffer.from(parts[1], "base64");
+
+  // 1. Upload le nouveau fichier (upsert remplace l'ancien directement)
   const { error: uploadError } = await supabase.storage
     .from("MyDrive")
     .upload(imagePath, bytes, {

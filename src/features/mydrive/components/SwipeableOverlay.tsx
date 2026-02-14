@@ -173,6 +173,10 @@ export default function SwipeableOverlay({
 
   const handleSaveEditedImage = async (blob: Blob) => {
     if (!currentItem) return;
+    if (!currentItem.image_path) {
+      alert("Erreur : chemin de l'image manquant, impossible de sauvegarder");
+      return;
+    }
     setIsSaving(true);
     try {
       const reader = new FileReader();
@@ -196,9 +200,15 @@ export default function SwipeableOverlay({
           setIsSaving(false);
         }
       };
+      reader.onerror = () => {
+        console.error("Erreur FileReader");
+        alert("Erreur lors de la lecture de l'image");
+        setIsSaving(false);
+      };
       reader.readAsDataURL(blob);
     } catch (error) {
       console.error("Erreur:", error);
+      alert("Erreur lors de la sauvegarde de l'image");
       setIsSaving(false);
     }
   };
