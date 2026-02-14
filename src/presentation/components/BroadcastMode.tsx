@@ -209,12 +209,57 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
 
     if (el.type === "shape") {
       return (
-        <ShapeSVG
-          shapeType={el.shapeType || "rectangle"}
-          fill={s.fill || "#3b82f6"}
-          stroke={s.stroke || "none"}
-          strokeWidth={s.strokeWidth || 0}
-        />
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          <ShapeSVG
+            shapeType={el.shapeType || "rectangle"}
+            fill={s.fill || "#3b82f6"}
+            stroke={s.stroke || "none"}
+            strokeWidth={s.strokeWidth || 0}
+          />
+          {/* Text overlay for shape content */}
+          <div
+            style={{
+              position: "absolute",
+              inset: el.shapeType === "callout" ? "4% 4% 28% 4%" : "8%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditingId(el.id);
+            }}
+          >
+            <div
+              contentEditable={isEditing}
+              suppressContentEditableWarning
+              onBlur={(e) => {
+                updateElement(el.id, { content: e.currentTarget.innerText });
+                setEditingId(null);
+              }}
+              onKeyDown={isEditing ? handleTextKeyDown : undefined}
+              onMouseDown={(e) => { if (isEditing) e.stopPropagation(); }}
+              style={{
+                width: "100%",
+                textAlign: (s.textAlign as "left" | "center" | "right") || "center",
+                fontSize: s.fontSize || 14,
+                fontFamily: s.fontFamily || "Arial",
+                fontWeight: s.fontWeight || "normal",
+                fontStyle: s.fontStyle || "normal",
+                color: s.color || "#fff",
+                lineHeight: s.lineHeight || 1.3,
+                padding: 4,
+                outline: isEditing ? "2px solid #ea580c" : "none",
+                cursor: isEditing ? "text" : "default",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {el.content || ""}
+            </div>
+          </div>
+        </div>
       );
     }
 
