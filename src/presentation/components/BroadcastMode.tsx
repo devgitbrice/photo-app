@@ -51,7 +51,7 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
         e.preventDefault();
         goPrev();
       }
-      if (e.key === "Escape") {
+      if (e.key === "Escape" || e.key === "Enter") {
         onClose();
       }
     };
@@ -123,43 +123,50 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
     const isEditing = editingId === el.id;
 
     if (el.type === "text") {
+      const vAlign = s.verticalAlign === "middle" ? "center" : s.verticalAlign === "bottom" ? "flex-end" : "flex-start";
       return (
         <div
-          contentEditable={isEditing}
-          suppressContentEditableWarning
+          style={{
+            width: "100%", height: "100%",
+            display: "flex",
+            alignItems: vAlign,
+            overflow: "hidden",
+          }}
           onDoubleClick={(e) => {
             e.stopPropagation();
             setEditingId(el.id);
           }}
-          onBlur={(e) => {
-            updateElement(el.id, { content: e.currentTarget.innerText });
-            setEditingId(null);
-          }}
-          onKeyDown={isEditing ? handleTextKeyDown : undefined}
-          style={{
-            width: "100%", height: "100%",
-            fontSize: s.fontSize || 18,
-            fontFamily: s.fontFamily || "Arial",
-            fontWeight: s.fontWeight || "normal",
-            fontStyle: s.fontStyle || "normal",
-            color: s.color || "#333",
-            backgroundColor: s.backgroundColor || "transparent",
-            textAlign: s.textAlign || "left",
-            lineHeight: s.lineHeight || 1.4,
-            textDecoration: s.textDecoration || "none",
-            textShadow: s.textShadow || "none",
-            WebkitTextStroke: s.WebkitTextStroke || undefined,
-            padding: s.padding ?? 8,
-            display: "flex",
-            alignItems: s.verticalAlign === "middle" ? "center" : s.verticalAlign === "bottom" ? "flex-end" : "flex-start",
-            overflow: "hidden",
-            outline: isEditing ? "2px solid #ea580c" : "none",
-            cursor: isEditing ? "text" : "default",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-          }}
         >
-          {el.content || ""}
+          <div
+            contentEditable={isEditing}
+            suppressContentEditableWarning
+            onBlur={(e) => {
+              updateElement(el.id, { content: e.currentTarget.innerText });
+              setEditingId(null);
+            }}
+            onKeyDown={isEditing ? handleTextKeyDown : undefined}
+            style={{
+              width: "100%",
+              fontSize: s.fontSize || 18,
+              fontFamily: s.fontFamily || "Arial",
+              fontWeight: s.fontWeight || "normal",
+              fontStyle: s.fontStyle || "normal",
+              color: s.color || "#333",
+              backgroundColor: s.backgroundColor || "transparent",
+              textAlign: s.textAlign || "left",
+              lineHeight: s.lineHeight || 1.4,
+              textDecoration: s.textDecoration || "none",
+              textShadow: s.textShadow || "none",
+              WebkitTextStroke: s.WebkitTextStroke || undefined,
+              padding: s.padding ?? 8,
+              outline: isEditing ? "2px solid #ea580c" : "none",
+              cursor: isEditing ? "text" : "default",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {el.content || ""}
+          </div>
         </div>
       );
     }
