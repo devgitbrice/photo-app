@@ -5,15 +5,12 @@ import { createDocRow } from "@/lib/createDocRow";
 import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/modify";
 import PresentationHeader from "./PresentationHeader";
 import PresentationSidebar from "./PresentationSidebar";
-import PresentationSlide from "./PresentationSlide";
+import PresentationToolbar from "./PresentationToolbar";
+import SlideCanvas from "./SlideCanvas";
 import PresentationTags from "./PresentationTags";
 import type { Tag } from "@/features/mydrive/types";
-
-export type Slide = {
-  id: string;
-  title: string;
-  bullets: string[];
-};
+import type { Slide } from "../types";
+import { parseSlides, createDefaultSlide } from "../types";
 
 interface PresentationEditorProps {
   initialData?: {
@@ -25,57 +22,44 @@ interface PresentationEditorProps {
   };
 }
 
-const defaultSlides: Slide[] = [
-  { id: "1", title: "Nouvelle Slide", bullets: ["Premier point"] }
-];
-
-function parseSlides(content: string): Slide[] {
-  try {
-    const parsed = JSON.parse(content);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-  } catch {}
-  return defaultSlides;
-}
-
 export default function PresentationEditor({ initialData }: PresentationEditorProps) {
   const [docId, setDocId] = useState(initialData?.id || "");
   const [docTitle, setDocTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.observation || "");
 
   const [slides, setSlides] = useState<Slide[]>(
-    initialData?.content ? parseSlides(initialData.content) : defaultSlides
+    initialData?.content ? parseSlides(initialData.content) : [createDefaultSlide()]
   );
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingRef = useRef(false);
 
-  // --- AUTO-SAVE (debounce 1.5s) ---
+  // Clear selection when changing slides
+  useEffect(() => {
+    setSelectedElementId(null);
+    setEditingElementId(null);
+  }, [currentIndex]);
+
+  // ─── Auto-save (debounce 1.5s) ─────────────────────────────
   const autoSave = useCallback(async () => {
     if (!docTitle.trim() || savingRef.current) return;
     savingRef.current = true;
     setStatus("saving");
     try {
+      const content = JSON.stringify(slides);
       if (docId) {
-        // Edit mode: update existing document
-        await updateDriveItemAction(docId, {
-          title: docTitle.trim(),
-          content: JSON.stringify(slides),
-          observation: description,
-        });
+        await updateDriveItemAction(docId, { title: docTitle.trim(), content, observation: description });
       } else {
-        // Create mode: create document, then switch to edit mode
         const newId = await createDocRow({
-          title: docTitle.trim(),
-          content: JSON.stringify(slides),
-          doc_type: "presentation",
-          observation: description,
+          title: docTitle.trim(), content, doc_type: "presentation", observation: description,
         });
         setDocId(newId);
         for (const tag of selectedTags) await addTagToItemAction(newId, tag.id);
-        // Update URL without full reload so refresh will restore state
         window.history.replaceState(null, "", `/editpresentation/${newId}`);
       }
     } catch (e) {
@@ -95,7 +79,6 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, []);
 
-  // Watch for changes to trigger auto-save
   useEffect(() => {
     if (docTitle.trim()) scheduleAutoSave();
   }, [slides, docTitle, description, scheduleAutoSave]);
@@ -105,29 +88,29 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setStatus("saving");
     try {
+      const content = JSON.stringify(slides);
       if (docId) {
-        await updateDriveItemAction(docId, {
-          title: docTitle.trim(),
-          content: JSON.stringify(slides),
-          observation: description,
-        });
-        setStatus("idle");
+        await updateDriveItemAction(docId, { title: docTitle.trim(), content, observation: description });
       } else {
         const newId = await createDocRow({
-          title: docTitle.trim(),
-          content: JSON.stringify(slides),
-          doc_type: "presentation",
-          observation: description,
+          title: docTitle.trim(), content, doc_type: "presentation", observation: description,
         });
         setDocId(newId);
         for (const tag of selectedTags) await addTagToItemAction(newId, tag.id);
         window.history.replaceState(null, "", `/editpresentation/${newId}`);
-        setStatus("idle");
       }
     } catch (e) {
       console.error(e);
+    } finally {
       setStatus("idle");
     }
+  };
+
+  const currentSlide = slides[currentIndex];
+  const updateCurrentSlide = (s: Slide) => {
+    const newSlides = [...slides];
+    newSlides[currentIndex] = s;
+    setSlides(newSlides);
   };
 
   return (
@@ -136,6 +119,15 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         title={docTitle} setTitle={setDocTitle}
         description={description} setDescription={setDescription}
         onSave={handleSave} status={status}
+        slides={slides}
+        presentationTitle={docTitle}
+      />
+
+      <PresentationToolbar
+        slide={currentSlide}
+        updateSlide={updateCurrentSlide}
+        selectedId={selectedElementId}
+        setSelectedId={setSelectedElementId}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -143,13 +135,13 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
           slides={slides} setSlides={setSlides}
           currentIndex={currentIndex} setCurrentIndex={setCurrentIndex}
         />
-        <PresentationSlide
-          slide={slides[currentIndex]}
-          updateSlide={(s) => {
-            const newSlides = [...slides];
-            newSlides[currentIndex] = s;
-            setSlides(newSlides);
-          }}
+        <SlideCanvas
+          slide={currentSlide}
+          updateSlide={updateCurrentSlide}
+          selectedId={selectedElementId}
+          setSelectedId={setSelectedElementId}
+          editingId={editingElementId}
+          setEditingId={setEditingElementId}
         />
       </div>
 
