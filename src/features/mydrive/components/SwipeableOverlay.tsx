@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import type { MyDriveItem, Tag } from "@/features/mydrive/types";
 import ImageEditor from "./ImageEditor";
 import TagSelector from "./TagSelector";
-import { replaceImageAction, updateDriveContentAction } from "@/features/mydrive/modify";
+import { updateDriveItemAction, updateDriveContentAction } from "@/features/mydrive/modify";
+import { supabase } from "@/lib/supabaseClient";
 
 // --- Utilitaires ---
 function filenameFromUrl(url: string | null | undefined, fallbackId: string) {
@@ -179,36 +180,38 @@ export default function SwipeableOverlay({
     }
     setIsSaving(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result as string;
-        try {
-          const result = await replaceImageAction(
-            currentItem.id,
-            currentItem.image_path || "",
-            base64Data
-          );
-          if (result.success && result.newUrl && onUpdate) {
-            onUpdate(currentItem.id, { image_url: result.newUrl } as Partial<MyDriveItem>);
-          }
-          setEditorMode(null);
-          window.location.reload();
-        } catch (error) {
-          console.error("Erreur lors de la sauvegarde:", error);
-          alert("Erreur lors de la sauvegarde de l'image");
-        } finally {
-          setIsSaving(false);
+      // Upload direct du blob vers Supabase Storage (sans passer par base64 + server action)
+      const { error: uploadError } = await supabase.storage
+        .from("MyDrive")
+        .upload(currentItem.image_path, blob, {
+          upsert: true,
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+        });
+
+      if (uploadError) {
+        console.error("Erreur upload Supabase:", uploadError);
+        alert(`Erreur upload : ${uploadError.message}`);
+        return;
+      }
+
+      // Récupérer la nouvelle URL publique avec cache buster
+      const { data } = supabase.storage.from("MyDrive").getPublicUrl(currentItem.image_path);
+      const newUrl = data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
+
+      if (newUrl) {
+        await updateDriveItemAction(currentItem.id, { image_url: newUrl });
+        if (onUpdate) {
+          onUpdate(currentItem.id, { image_url: newUrl } as Partial<MyDriveItem>);
         }
-      };
-      reader.onerror = () => {
-        console.error("Erreur FileReader");
-        alert("Erreur lors de la lecture de l'image");
-        setIsSaving(false);
-      };
-      reader.readAsDataURL(blob);
+      }
+
+      setEditorMode(null);
+      window.location.reload();
     } catch (error) {
-      console.error("Erreur:", error);
-      alert("Erreur lors de la sauvegarde de l'image");
+      console.error("Erreur lors de la sauvegarde:", error);
+      alert(`Erreur : ${error instanceof Error ? error.message : "erreur inconnue"}`);
+    } finally {
       setIsSaving(false);
     }
   };
