@@ -7,6 +7,7 @@ import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/mo
 import TableHeader from "./TableHeader";
 import TableGrid from "./TableGrid";
 import TableTags from "./TableTags";
+import FileSearchModal from "@/components/FileSearchModal";
 import type { Tag } from "@/features/mydrive/types";
 
 interface TableEditorProps {
@@ -39,6 +40,7 @@ export default function TableEditor({ initialData }: TableEditorProps) {
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [fileSearchOpen, setFileSearchOpen] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- AUTO-SAVE (edit mode only, debounce 1.5s) ---
@@ -66,6 +68,18 @@ export default function TableEditor({ initialData }: TableEditorProps) {
 
   useEffect(() => {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, []);
+
+  // Cmd+K : ouvrir la recherche de fichiers
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setFileSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   // Watch for data changes to trigger auto-save in edit mode
@@ -109,6 +123,7 @@ export default function TableEditor({ initialData }: TableEditorProps) {
 
   return (
     <div className="flex flex-col h-dvh w-full bg-neutral-900 text-white overflow-hidden">
+      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} />
       <TableHeader
         title={title} setTitle={setTitle}
         description={description} setDescription={setDescription}

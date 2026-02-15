@@ -10,6 +10,7 @@ import SlideCanvas from "./SlideCanvas";
 import PresentationTags from "./PresentationTags";
 import BroadcastMode from "./BroadcastMode";
 import NanoBananaPanel from "./NanoBananaPanel";
+import FileSearchModal from "@/components/FileSearchModal";
 import type { Tag } from "@/features/mydrive/types";
 import type { Slide, SlideElement, PresentationStyles } from "../types";
 import { parsePresentationData, createDefaultSlide, DEFAULT_PRESENTATION_STYLES } from "../types";
@@ -45,6 +46,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
   const [broadcasting, setBroadcasting] = useState(false);
   const [nightMode, setNightMode] = useState(false);
   const [nanoBananaOpen, setNanoBananaOpen] = useState(false);
+  const [fileSearchOpen, setFileSearchOpen] = useState(false);
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -56,6 +58,18 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     setSelectedElementId(null);
     setEditingElementId(null);
   }, [currentIndex]);
+
+  // Cmd+K : ouvrir la recherche de fichiers
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setFileSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // ─── Slide-level keyboard shortcuts ────────────────────────────
   useEffect(() => {
@@ -237,6 +251,8 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
           nightMode={nightMode}
         />
       )}
+
+      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} />
 
       {nanoBananaOpen && (
         <NanoBananaPanel

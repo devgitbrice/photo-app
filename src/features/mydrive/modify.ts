@@ -190,6 +190,27 @@ export async function createMindmapAction(input: {
 }
 
 /**
+ * RECHERCHER DES FICHIERS PAR TITRE (pour Cmd+K)
+ */
+export async function searchDriveItemsAction(query: string) {
+  const trimmed = query.trim().toLowerCase();
+  if (trimmed.length < 3) return [];
+
+  const { data, error } = await supabase
+    .from("MyDrive")
+    .select("id, title, doc_type, type")
+    .ilike("title", `%${trimmed}%`)
+    .limit(10);
+
+  if (error) {
+    console.error("Erreur recherche MyDrive:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
  * --- CRÉATION SCRIPT PYTHON ---
  */
 export async function createPythonScriptAction(input: {
