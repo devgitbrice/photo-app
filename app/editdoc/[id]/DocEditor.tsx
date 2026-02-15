@@ -7,6 +7,7 @@ import type { Tag } from "@/features/mydrive/types";
 import DocHeader from "@/features/doc/components/DocHeader";
 import DocRibbon from "@/features/doc/components/DocRibbon";
 import BlockManager from "@/features/doc/components/BlockManager";
+import FileSearchModal from "@/components/FileSearchModal";
 
 interface DocEditorProps {
   allTags: Tag[];
@@ -22,6 +23,7 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData.tags);
   const [allTags, setAllTags] = useState<Tag[]>(initialAllTags);
   const [tocOpen, setTocOpen] = useState(true);
+  const [fileSearchOpen, setFileSearchOpen] = useState(false);
 
   const contentRef = useRef(initialData.content);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -47,6 +49,18 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, []);
 
+  // Cmd+K : ouvrir la recherche de fichiers
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setFileSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const handleTitleChange = (val: string) => {
     setTitle(val);
     scheduleAutoSave(val, contentRef.current, observation);
@@ -64,6 +78,7 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
 
   return (
     <div className="flex flex-col h-dvh w-full overflow-hidden bg-neutral-950">
+      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} />
       <DocHeader title={title} observation={observation} status={status} onTitleChange={handleTitleChange} onObservationChange={handleObservationChange} />
       <DocRibbon tocOpen={tocOpen} setTocOpen={setTocOpen} />
       
