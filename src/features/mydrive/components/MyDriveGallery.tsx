@@ -8,6 +8,7 @@ import type { MyDriveItem, MyDriveListProps, Tag } from "@/features/mydrive/type
 import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay";
 import { updateDriveItemAction, deleteDriveItemAction } from "@/features/mydrive/modify";
 import { parseSlides } from "@/presentation/types";
+import { downloadItemAsFile } from "@/features/mydrive/lib/downloadItem";
 
 // --- Icônes et couleurs par type de fichier ---
 const DOC_TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; text: string; border: string; label: string }> = {
@@ -225,6 +226,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
   const NO_TAGS = "__no_tags__";
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<MyDriveItem | null>(null);
 
   // Mise à jour des props si elles changent
   useEffect(() => {
@@ -468,6 +470,57 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     const typeConfig = docType ? DOC_TYPE_CONFIG[docType] : null;
     const isPresentation = itemData.doc_type === "presentation";
 
+    // Bouton Supprimer (haut à droite)
+    const deleteButton = (
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDeleteConfirmItem(item);
+        }}
+        className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-lg bg-red-600/80 hover:bg-red-600 text-white backdrop-blur-md border border-red-500/40 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Supprimer"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    );
+
+    // Bouton Télécharger (bas à droite)
+    const downloadButton = (
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadItemAsFile(item);
+        }}
+        className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-neutral-800 hover:bg-blue-600 text-neutral-400 hover:text-white transition-colors"
+        title="Télécharger"
+      >
+        {docType === "scan" || (!itemData.doc_type && validUrl) ? (
+          /* PDF / Photo / Scan → flèche téléchargement */
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+          </svg>
+        ) : docType === "doc" ? (
+          /* Doc → icône document W */
+          <span className="text-[9px] font-bold leading-none">W</span>
+        ) : docType === "presentation" ? (
+          /* Présentation → icône présentation P */
+          <span className="text-[9px] font-bold leading-none">P</span>
+        ) : docType === "table" ? (
+          /* Table → icône tableur X */
+          <span className="text-[9px] font-bold leading-none">X</span>
+        ) : (
+          /* Défaut → flèche téléchargement */
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+          </svg>
+        )}
+      </button>
+    );
+
     return (
       <>
         {isPresentation && item.content ? (
@@ -482,6 +535,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
                     <span>{typeConfig.label}</span>
                   </div>
                 )}
+                {deleteButton}
               </>
             )}
           </PresentationCardWrapper>
@@ -512,11 +566,18 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
                 <span>{typeConfig.label}</span>
               </div>
             ) : null}
+
+            {/* Bouton Supprimer en haut à droite */}
+            {deleteButton}
           </div>
         )}
 
         <div className="p-3 flex flex-col gap-1 bg-neutral-900 border-t border-neutral-800">
-          <h3 className="font-medium text-neutral-200 truncate text-sm group-hover:text-blue-400 transition-colors">{item.title}</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-medium text-neutral-200 truncate text-sm group-hover:text-blue-400 transition-colors flex-1 min-w-0">{item.title}</h3>
+            {/* Bouton Télécharger en bas à droite */}
+            {downloadButton}
+          </div>
           <div className="flex items-center gap-2 text-[10px] text-neutral-500 uppercase tracking-wide">
             <span suppressHydrationWarning className="shrink-0">
               {item.created_at ? format(new Date(item.created_at), "dd MMM", { locale: fr }) : "-"}
@@ -690,6 +751,35 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
           onTagsChange={handleTagsChange}
           onNewTagCreated={handleNewTagCreated}
         />
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {deleteConfirmItem && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setDeleteConfirmItem(null)}>
+          <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-white mb-2">Supprimer ce fichier ?</h3>
+            <p className="text-neutral-400 text-sm mb-6">
+              Voulez-vous vraiment supprimer <span className="text-white font-medium">&quot;{deleteConfirmItem.title}&quot;</span> ? Cette action est irréversible.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmItem(null)}
+                className="px-4 py-2 text-sm text-neutral-300 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => {
+                  handleDeleteItem(deleteConfirmItem.id, deleteConfirmItem.image_path || "");
+                  setDeleteConfirmItem(null);
+                }}
+                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
