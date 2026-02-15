@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, memo } from "react";
+import React, { useRef, useEffect, useCallback, memo } from "react";
 import { Search, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { DocBlock } from "../types";
 
@@ -12,17 +12,64 @@ interface SingleBlockProps {
   onSplit?: (id: string, beforeHtml: string, afterHtml: string) => void;
 }
 
-export const SingleBlock = memo(function SingleBlock({ 
-  block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onSplit 
+/** Remove injected copy buttons from HTML before saving */
+function stripCopyButtons(html: string): string {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  div.querySelectorAll(".code-copy-btn").forEach((btn) => btn.remove());
+  return div.innerHTML;
+}
+
+export const SingleBlock = memo(function SingleBlock({
+  block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onSplit
 }: SingleBlockProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+
+  /** Inject copy buttons into <pre> elements */
+  const injectCopyButtons = useCallback(() => {
+    if (!editorRef.current) return;
+    const pres = editorRef.current.querySelectorAll("pre");
+    pres.forEach((pre) => {
+      if (pre.querySelector(".code-copy-btn")) return;
+      pre.style.position = "relative";
+      const btn = document.createElement("button");
+      btn.className = "code-copy-btn";
+      btn.contentEditable = "false";
+      btn.textContent = "Copier";
+      btn.style.cssText =
+        "position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;font-family:system-ui,sans-serif;" +
+        "background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;" +
+        "opacity:0;transition:opacity .2s;z-index:5;font-weight:500;letter-spacing:0.02em;";
+      btn.addEventListener("mouseenter", () => { btn.style.opacity = "1"; btn.style.background = "#2563eb"; });
+      btn.addEventListener("mouseleave", () => { btn.style.opacity = "0"; btn.style.background = "#3b82f6"; });
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const clone = pre.cloneNode(true) as HTMLPreElement;
+        clone.querySelector(".code-copy-btn")?.remove();
+        const text = clone.textContent?.trim() || "";
+        navigator.clipboard.writeText(text);
+        btn.textContent = "Copié !";
+        btn.style.background = "#22c55e";
+        setTimeout(() => { btn.textContent = "Copier"; btn.style.background = "#3b82f6"; }, 2000);
+      });
+      // Show button on pre hover
+      pre.addEventListener("mouseenter", () => { btn.style.opacity = "1"; });
+      pre.addEventListener("mouseleave", (e) => {
+        const related = e.relatedTarget as HTMLElement | null;
+        if (related !== btn && !btn.contains(related)) btn.style.opacity = "0";
+      });
+      pre.appendChild(btn);
+    });
+  }, []);
 
   useEffect(() => {
     document.execCommand("defaultParagraphSeparator", false, "p");
     if (editorRef.current && editorRef.current.innerHTML !== block.html) {
       editorRef.current.innerHTML = block.html || "<p><br></p>";
     }
-  }, [block.html]);
+    injectCopyButtons();
+  }, [block.html, injectCopyButtons]);
 
   const linkifyNode = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -43,16 +90,26 @@ export const SingleBlock = memo(function SingleBlock({
     }
   };
 
+  const handleInput = () => {
+    if (!editorRef.current) return;
+    const html = stripCopyButtons(editorRef.current.innerHTML);
+    onHtmlChange(block.id, html);
+    // Re-inject copy buttons after DOM change
+    setTimeout(injectCopyButtons, 0);
+  };
+
   const handleBlur = () => {
     if (editorRef.current) {
       const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = editorRef.current.innerHTML;
+      tempDiv.innerHTML = stripCopyButtons(editorRef.current.innerHTML);
       linkifyNode(tempDiv);
-      
+
       const newHtml = tempDiv.innerHTML;
-      if (newHtml !== editorRef.current.innerHTML) {
+      const currentClean = stripCopyButtons(editorRef.current.innerHTML);
+      if (newHtml !== currentClean) {
         editorRef.current.innerHTML = newHtml;
         onHtmlChange(block.id, newHtml);
+        injectCopyButtons();
       }
     }
   };
@@ -66,7 +123,9 @@ export const SingleBlock = memo(function SingleBlock({
       const marker = document.createElement("span");
       marker.id = `split-${Date.now()}`;
       range.insertNode(marker);
-      const parts = editorRef.current?.innerHTML.split(marker.outerHTML) || [];
+      const rawHtml = editorRef.current?.innerHTML || "";
+      const cleanHtml = stripCopyButtons(rawHtml);
+      const parts = cleanHtml.split(marker.outerHTML);
       marker.remove();
       if (parts.length === 2) onSplit(block.id, parts[0] || "<p><br></p>", parts[1] || "<p><br></p>");
     }
@@ -81,10 +140,13 @@ export const SingleBlock = memo(function SingleBlock({
       </div>
       <div
         ref={editorRef} contentEditable suppressContentEditableWarning
-        onInput={() => onHtmlChange(block.id, editorRef.current?.innerHTML || "")}
+        onInput={handleInput}
         onBlur={handleBlur} onKeyDown={handleKeyDown}
         className="block-editor-content w-full text-white outline-none min-h-[1.5rem] whitespace-pre-wrap
-          [&_h1]:text-3xl [&_h1]:font-bold [&_p]:mb-3 [&_pre]:bg-neutral-900 [&_pre]:p-4 [&_pre]:rounded-lg"
+          [&_h1]:text-3xl [&_h1]:font-bold [&_p]:mb-3
+          [&_pre]:bg-[#1e1e2e] [&_pre]:border [&_pre]:border-neutral-700 [&_pre]:border-l-4 [&_pre]:border-l-blue-500
+          [&_pre]:p-4 [&_pre]:pl-5 [&_pre]:rounded-lg [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed
+          [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30 [&_pre]:my-3 [&_pre]:overflow-x-auto"
       />
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 z-10">
         <button onClick={() => onAddBelow(block.id)} className="p-1.5 bg-blue-600 text-white rounded-full shadow-lg"><Plus size={16} /></button>
