@@ -7,7 +7,7 @@ import { addTagToItemAction, updateDriveItemAction } from "@/features/mydrive/mo
 import TableHeader from "./TableHeader";
 import TableGrid from "./TableGrid";
 import TableTags from "./TableTags";
-import FileSearchModal from "@/components/FileSearchModal";
+import FileSearchModal, { type SearchResult } from "@/components/FileSearchModal";
 import type { Tag } from "@/features/mydrive/types";
 
 interface TableEditorProps {
@@ -70,6 +70,10 @@ export default function TableEditor({ initialData }: TableEditorProps) {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, []);
 
+  const handleInsertDocLink = useCallback((item: SearchResult) => {
+    window.dispatchEvent(new CustomEvent("table-insert-link", { detail: item }));
+  }, []);
+
   // Cmd+K : ouvrir la recherche de fichiers
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -123,7 +127,7 @@ export default function TableEditor({ initialData }: TableEditorProps) {
 
   return (
     <div className="flex flex-col h-dvh w-full bg-neutral-900 text-white overflow-hidden">
-      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} />
+      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} onInsert={handleInsertDocLink} />
       <TableHeader
         title={title} setTitle={setTitle}
         description={description} setDescription={setDescription}

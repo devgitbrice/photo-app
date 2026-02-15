@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { searchDriveItemsAction } from "@/features/mydrive/modify";
 
-interface SearchResult {
+export interface SearchResult {
   id: string;
   title: string;
   doc_type: string | null;
@@ -18,7 +18,7 @@ const DOC_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   presentation: { label: "Présentation", color: "text-orange-400" },
 };
 
-function getEditUrl(item: SearchResult): string {
+export function getEditUrl(item: SearchResult): string {
   switch (item.doc_type) {
     case "python": return `/editpython/${item.id}`;
     case "doc": return `/editdoc/${item.id}`;
@@ -32,9 +32,10 @@ function getEditUrl(item: SearchResult): string {
 interface FileSearchModalProps {
   open: boolean;
   onClose: () => void;
+  onInsert?: (item: SearchResult) => void;
 }
 
-export default function FileSearchModal({ open, onClose }: FileSearchModalProps) {
+export default function FileSearchModal({ open, onClose, onInsert }: FileSearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -156,18 +157,31 @@ export default function FileSearchModal({ open, onClose }: FileSearchModalProps)
               )}
               <span className="text-white font-medium text-sm">{selectedItem.title}</span>
             </div>
-            <a
-              href={getEditUrl(selectedItem)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm underline underline-offset-2 transition-colors"
-              onClick={() => onClose()}
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              Ouvrir dans un nouvel onglet
-            </a>
+            <div className="flex flex-col gap-2">
+              {onInsert && (
+                <button
+                  onClick={() => { onInsert(selectedItem); onClose(); }}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Ajouter dans le document
+                </button>
+              )}
+              <a
+                href={getEditUrl(selectedItem)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm underline underline-offset-2 transition-colors"
+                onClick={() => onClose()}
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Ouvrir dans un nouvel onglet
+              </a>
+            </div>
             <button
               onClick={() => setSelectedItem(null)}
               className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
