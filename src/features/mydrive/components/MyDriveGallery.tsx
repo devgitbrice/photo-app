@@ -7,6 +7,214 @@ import { fr } from "date-fns/locale";
 import type { MyDriveItem, MyDriveListProps, Tag } from "@/features/mydrive/types";
 import SwipeableOverlay from "@/features/mydrive/components/SwipeableOverlay";
 import { updateDriveItemAction, deleteDriveItemAction } from "@/features/mydrive/modify";
+import { parseSlides } from "@/presentation/types";
+
+// --- Icônes et couleurs par type de fichier ---
+const DOC_TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; text: string; border: string; label: string }> = {
+  doc: {
+    label: "Doc",
+    bg: "bg-blue-500/20",
+    text: "text-blue-400",
+    border: "border-blue-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  python: {
+    label: "Python",
+    bg: "bg-yellow-500/20",
+    text: "text-yellow-400",
+    border: "border-yellow-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 6 4.02 6 4.02V7h6v1H5S2 7.55 2 12.09c0 4.54 2.87 4.38 2.87 4.38H7v-2.15s-.12-2.87 2.77-2.87h4.46s2.72.04 2.72-2.66V4.72S17.36 2 12 2zm-1.52 1.6a.87.87 0 110 1.74.87.87 0 010-1.74z"/>
+        <path d="M12 22c5.52 0 6-2.02 6-2.02V17h-6v-1h7s3 .45 3-4.09c0-4.54-2.87-4.38-2.87-4.38H17v2.15s.12 2.87-2.77 2.87H9.77s-2.72-.04-2.72 2.66v4.07S6.64 22 12 22zm1.52-1.6a.87.87 0 110-1.74.87.87 0 010 1.74z"/>
+      </svg>
+    ),
+  },
+  mindmap: {
+    label: "Mindmap",
+    bg: "bg-purple-500/20",
+    text: "text-purple-400",
+    border: "border-purple-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" /><path strokeLinecap="round" d="M12 9V4m0 16v-5m-3 .5L5 18m14-14l-4 2.5M15 14.5L19 18M5 6l4 2.5" />
+      </svg>
+    ),
+  },
+  table: {
+    label: "Table",
+    bg: "bg-green-500/20",
+    text: "text-green-400",
+    border: "border-green-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+      </svg>
+    ),
+  },
+  presentation: {
+    label: "Présentation",
+    bg: "bg-orange-500/20",
+    text: "text-orange-400",
+    border: "border-orange-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="14" rx="2" /><path strokeLinecap="round" d="M8 21h8M12 17v4" />
+      </svg>
+    ),
+  },
+  scan: {
+    label: "PDF / Scan",
+    bg: "bg-rose-500/20",
+    text: "text-rose-400",
+    border: "border-rose-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9l-5-5H7a2 2 0 00-2 2v13a2 2 0 002 2z" /><polyline points="14,4 14,9 19,9" fill="none" />
+      </svg>
+    ),
+  },
+  photo: {
+    label: "Photo",
+    bg: "bg-cyan-500/20",
+    text: "text-cyan-400",
+    border: "border-cyan-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+      </svg>
+    ),
+  },
+};
+
+// --- Mini-aperçu d'une slide de présentation ---
+function MiniSlidePreview({ content, slideIndex }: { content: string; slideIndex: number }) {
+  const slides = useMemo(() => {
+    try {
+      return parseSlides(content);
+    } catch {
+      return [];
+    }
+  }, [content]);
+
+  const slide = slides[slideIndex];
+  if (!slide) return null;
+
+  return (
+    <div
+      className="w-full h-full relative overflow-hidden"
+      style={{ backgroundColor: slide.backgroundColor || "#ffffff" }}
+    >
+      {slide.elements.map((el) => (
+        <div
+          key={el.id}
+          className="absolute overflow-hidden"
+          style={{
+            left: `${el.x}%`,
+            top: `${el.y}%`,
+            width: `${el.width}%`,
+            height: `${el.height}%`,
+            transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+            zIndex: el.zIndex,
+          }}
+        >
+          {el.type === "text" && (
+            <div
+              className="w-full h-full overflow-hidden leading-tight"
+              style={{
+                fontSize: `${(el.style.fontSize || 16) * 0.25}px`,
+                fontWeight: el.style.fontWeight || "normal",
+                fontStyle: el.style.fontStyle || "normal",
+                color: el.style.color || "#000",
+                textAlign: (el.style.textAlign as any) || "left",
+                fontFamily: el.style.fontFamily || "Arial",
+              }}
+            >
+              {el.content}
+            </div>
+          )}
+          {el.type === "image" && el.src && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={el.src} alt="" className="w-full h-full object-cover" />
+          )}
+          {el.type === "shape" && (
+            <div
+              className="w-full h-full"
+              style={{
+                backgroundColor: el.style.fill || el.style.backgroundColor || "#ddd",
+                borderRadius: el.shapeType === "circle" || el.shapeType === "ellipse" ? "50%" : el.shapeType === "rounded-rect" ? "8px" : undefined,
+              }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Carte de présentation avec navigation ---
+function PresentationCardWrapper({
+  item,
+  imageHeightClass,
+  children,
+}: {
+  item: MyDriveItem;
+  imageHeightClass: string;
+  children: (slideIndex: number) => React.ReactNode;
+}) {
+  const [slideIndex, setSlideIndex] = useState(0);
+  const slideCount = useMemo(() => {
+    try {
+      return parseSlides(item.content || "").length;
+    } catch {
+      return 0;
+    }
+  }, [item.content]);
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSlideIndex((i) => Math.max(0, i - 1));
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSlideIndex((i) => Math.min(slideCount - 1, i + 1));
+  };
+
+  return (
+    <div className={`${imageHeightClass} w-full bg-neutral-950 relative overflow-hidden flex items-center justify-center group/slides`}>
+      {children(slideIndex)}
+      {slideCount > 1 && (
+        <>
+          {slideIndex > 0 && (
+            <button
+              onClick={goPrev}
+              className="absolute left-1 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover/slides:opacity-100 transition-opacity text-xs"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+          )}
+          {slideIndex < slideCount - 1 && (
+            <button
+              onClick={goNext}
+              className="absolute right-1 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover/slides:opacity-100 transition-opacity text-xs"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          )}
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full opacity-0 group-hover/slides:opacity-100 transition-opacity">
+            {slideIndex + 1} / {slideCount}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function MyDriveGallery({ items: initialItems, allTags: initialTags }: MyDriveListProps) {
   const [items, setItems] = useState<MyDriveItem[]>(initialItems);
@@ -253,35 +461,59 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
 
 // --- RENDU CARTE (SÉCURISÉ) ---
   const renderCardContent = (item: MyDriveItem) => {
-    const itemData = item as any; 
+    const itemData = item as any;
     const rawUrl = itemData.image_url ? itemData.image_url.trim() : "";
     const validUrl = rawUrl.length > 0 ? rawUrl : null;
+    const docType = itemData.doc_type || (validUrl ? "photo" : null);
+    const typeConfig = docType ? DOC_TYPE_CONFIG[docType] : null;
+    const isPresentation = itemData.doc_type === "presentation";
 
     return (
       <>
-        <div className={`${imageHeightClass} w-full bg-neutral-950 relative overflow-hidden flex items-center justify-center`}>
-          {validUrl ? (
-            <img src={validUrl} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-neutral-700 group-hover:text-blue-500 transition-colors">
-               {itemData.type === "folder" ? (
-                  <svg className="w-16 h-16 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" /></svg>
-               ) : (
-                  <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-               )}
-            </div>
-          )}
-
-          {(itemData.doc_type || itemData.type === 'folder') && (
-              <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border shadow-sm ${
-                itemData.type === 'folder' 
-                  ? "bg-yellow-500/20 text-yellow-200 border-yellow-500/30" 
-                  : "bg-blue-500/20 text-blue-200 border-blue-500/30"
-              }`}>
-                {itemData.type === 'folder' ? 'DOSSIER' : itemData.doc_type}
+        {isPresentation && item.content ? (
+          <PresentationCardWrapper item={item} imageHeightClass={imageHeightClass}>
+            {(slideIndex) => (
+              <>
+                <MiniSlidePreview content={item.content || ""} slideIndex={slideIndex} />
+                {/* Badge type en haut à gauche */}
+                {typeConfig && (
+                  <div className={`absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border shadow-sm ${typeConfig.bg} ${typeConfig.text} ${typeConfig.border}`}>
+                    {typeConfig.icon}
+                    <span>{typeConfig.label}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </PresentationCardWrapper>
+        ) : (
+          <div className={`${imageHeightClass} w-full bg-neutral-950 relative overflow-hidden flex items-center justify-center`}>
+            {validUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={validUrl} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-neutral-700 group-hover:text-blue-500 transition-colors">
+                 {itemData.type === "folder" ? (
+                    <svg className="w-16 h-16 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" /></svg>
+                 ) : (
+                    <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                 )}
               </div>
-          )}
-        </div>
+            )}
+
+            {/* Badge type en haut à gauche avec icône colorée */}
+            {itemData.type === 'folder' ? (
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border shadow-sm bg-yellow-500/20 text-yellow-300 border-yellow-500/40">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" /></svg>
+                <span>Dossier</span>
+              </div>
+            ) : typeConfig ? (
+              <div className={`absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border shadow-sm ${typeConfig.bg} ${typeConfig.text} ${typeConfig.border}`}>
+                {typeConfig.icon}
+                <span>{typeConfig.label}</span>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <div className="p-3 flex flex-col gap-1 bg-neutral-900 border-t border-neutral-800">
           <h3 className="font-medium text-neutral-200 truncate text-sm group-hover:text-blue-400 transition-colors">{item.title}</h3>
