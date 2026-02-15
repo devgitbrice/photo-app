@@ -19,9 +19,10 @@ type Props = {
   updateSlide: (s: Slide) => void;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
+  onNanoBanana?: () => void;
 };
 
-export default function PresentationToolbar({ slide, updateSlide, selectedId, setSelectedId }: Props) {
+export default function PresentationToolbar({ slide, updateSlide, selectedId, setSelectedId, onNanoBanana }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedEl = slide.elements.find((e) => e.id === selectedId);
@@ -204,11 +205,11 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
               <Search size={14} /> Google Images
             </button>
             <button
-              disabled
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-500 rounded cursor-not-allowed"
+              onClick={() => { onNanoBanana?.(); setOpenMenu(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded"
             >
-              <Banana size={14} /> Nano banana
-              <span className="text-[10px] text-neutral-600 ml-auto">bientot</span>
+              <Banana size={14} className="text-yellow-500" /> Nano banana
+              <span className="text-[10px] text-yellow-500/70 ml-auto">IA</span>
             </button>
           </Dropdown>
         </div>

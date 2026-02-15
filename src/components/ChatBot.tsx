@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 type Message = {
   id: string;
@@ -11,32 +11,73 @@ type Message = {
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: "welcome", role: "bot", text: "Bonjour ! Je suis l'assistant MyDrive. Comment puis-je vous aider ?" },
+    {
+      id: "welcome",
+      role: "bot",
+      text: "Bonjour ! Je suis l'assistant MyDrive propulsé par Gemini. Comment puis-je vous aider ?",
+    },
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [insertedId, setInsertedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
 
-    const userMsg: Message = { id: Date.now().toString(), role: "user", text: trimmed };
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      text: trimmed,
+    };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setLoading(true);
 
-    // Placeholder bot response (sera branché plus tard)
-    setTimeout(() => {
+    try {
+      // Build history (exclude welcome message)
+      const history = messages
+        .filter((m) => m.id !== "welcome")
+        .map((m) => ({ role: m.role === "user" ? "user" : "bot", text: m.text }));
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed, history }),
+      });
+
+      const data = await res.json();
+
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: "Cette fonctionnalité sera bientôt disponible. Le chatbot sera connecté prochainement !",
+        text: data.text || data.error || "Erreur de connexion",
       };
       setMessages((prev) => [...prev, botMsg]);
-    }, 500);
+    } catch {
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "bot",
+        text: "Erreur de connexion au serveur. Veuillez réessayer.",
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, messages]);
+
+  const handleInsert = (text: string, msgId: string) => {
+    // Dispatch a custom event so editors can listen and insert the text
+    window.dispatchEvent(
+      new CustomEvent("chatbot-insert", { detail: { text } })
+    );
+    setInsertedId(msgId);
+    setTimeout(() => setInsertedId(null), 2000);
   };
 
   return (
@@ -48,12 +89,32 @@ export default function ChatBot() {
         title="Assistant MyDrive"
       >
         {isOpen ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         ) : (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
           </svg>
         )}
       </button>
@@ -64,29 +125,108 @@ export default function ChatBot() {
           {/* Header */}
           <div className="bg-blue-600 px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </div>
             <div>
-              <h3 className="text-white font-semibold text-sm">Assistant MyDrive</h3>
-              <p className="text-blue-200 text-xs">En ligne</p>
+              <h3 className="text-white font-semibold text-sm">
+                Assistant MyDrive
+              </h3>
+              <p className="text-blue-200 text-xs">
+                {loading ? "En train de réfléchir..." : "Gemini 3 Pro"}
+              </p>
             </div>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[50vh]">
             {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-md"
-                    : "bg-neutral-800 text-neutral-200 rounded-bl-md"
-                }`}>
+              <div
+                key={msg.id}
+                className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "bg-blue-600 text-white rounded-br-md"
+                      : "bg-neutral-800 text-neutral-200 rounded-bl-md"
+                  }`}
+                >
                   {msg.text}
                 </div>
+                {/* Insert button for bot messages */}
+                {msg.role === "bot" && msg.id !== "welcome" && (
+                  <button
+                    onClick={() => handleInsert(msg.text, msg.id)}
+                    className={`mt-1 text-xs px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 ${
+                      insertedId === msg.id
+                        ? "bg-green-600/20 text-green-400"
+                        : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-blue-400"
+                    }`}
+                  >
+                    {insertedId === msg.id ? (
+                      <>
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        Inséré !
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m0 0l-4-4m4 4l4-4"
+                          />
+                        </svg>
+                        Insérer
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             ))}
+
+            {/* Loading indicator */}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-neutral-800 text-neutral-400 px-4 py-2 rounded-2xl rounded-bl-md text-sm flex items-center gap-2">
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -98,15 +238,26 @@ export default function ChatBot() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Tapez un message..."
-              className="flex-1 bg-neutral-800 text-white rounded-xl px-3 py-2 text-sm outline-none border border-neutral-700 focus:border-blue-500 transition-colors"
+              disabled={loading}
+              className="flex-1 bg-neutral-800 text-white rounded-xl px-3 py-2 text-sm outline-none border border-neutral-700 focus:border-blue-500 transition-colors disabled:opacity-50"
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim()}
+              disabled={!input.trim() || loading}
               className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
             </button>
           </div>
