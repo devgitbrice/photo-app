@@ -41,10 +41,17 @@ export type ShapeType =
   | "line"
   | "callout";
 
+// ─── Mindmap node ────────────────────────────────────────────────
+export type MindmapNode = {
+  id: string;
+  label: string;
+  children: MindmapNode[];
+};
+
 // ─── Slide Element ────────────────────────────────────────────────
 export type SlideElement = {
   id: string;
-  type: "text" | "image" | "shape" | "icon" | "table";
+  type: "text" | "image" | "shape" | "icon" | "table" | "mindmap" | "code";
   x: number; // percentage 0-100
   y: number;
   width: number;
@@ -64,6 +71,11 @@ export type SlideElement = {
   iconSize?: number;
   // Table
   tableData?: string[][];
+  // Mindmap
+  mindmapData?: MindmapNode;
+  // Code
+  codeContent?: string;
+  codeLanguage?: string;
   // Style
   style: ElementStyle;
 };
@@ -206,4 +218,11 @@ export const FONT_FAMILIES = [
   "Arial", "Helvetica", "Georgia", "Times New Roman",
   "Courier New", "Verdana", "Trebuchet MS", "Impact",
   "Comic Sans MS", "Palatino", "Garamond", "Bookman",
+];
+
+// ─── Code languages ──────────────────────────────────────────────
+export const CODE_LANGUAGES = [
+  "javascript", "typescript", "python", "java", "c", "cpp", "csharp",
+  "html", "css", "json", "sql", "bash", "ruby", "go", "rust", "php",
+  "swift", "kotlin", "dart", "yaml", "xml", "markdown",
 ];

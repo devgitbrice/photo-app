@@ -193,6 +193,25 @@ export default function PresentationSidebar({ slides, setSlides, currentIndex, s
                       {el.type === "table" && (
                         <div className="w-full h-full border border-gray-300" style={{ background: "repeating-linear-gradient(0deg, transparent, transparent 30%, #ddd 30%, #ddd 31%)" }} />
                       )}
+                      {el.type === "mindmap" && (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-orange-500" />
+                          <div className="w-2 h-px bg-orange-400" />
+                          <div className="flex flex-col gap-0.5">
+                            <div className="w-2 h-1 rounded-sm bg-blue-400" />
+                            <div className="w-2 h-1 rounded-sm bg-green-400" />
+                          </div>
+                        </div>
+                      )}
+                      {el.type === "code" && (
+                        <div className="w-full h-full rounded-sm" style={{ backgroundColor: "#1e1e1e" }}>
+                          <div className="p-0.5">
+                            <div className="h-0.5 w-3/4 rounded bg-blue-400 mb-0.5" />
+                            <div className="h-0.5 w-1/2 rounded bg-green-400 mb-0.5" />
+                            <div className="h-0.5 w-2/3 rounded bg-orange-400" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
               </div>

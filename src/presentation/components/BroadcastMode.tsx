@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Slide, SlideElement } from "../types";
+import type { Slide, SlideElement, MindmapNode } from "../types";
 import { ICON_MAP } from "./IconMap";
 import ShapeSVG from "./ShapeSVG";
 
@@ -275,6 +275,53 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
 
     if (el.type === "table") {
       const data = el.tableData || [["", ""], ["", ""]];
+      // Formula evaluation for broadcast mode
+      const evalFormula = (formula: string): number => {
+        if (!formula.startsWith("=")) return parseFloat(formula) || 0;
+        const expr = formula.slice(1).trim();
+        const cellRef = (ref: string): number => {
+          const m = ref.match(/^([A-Z])(\d+)$/i);
+          if (!m) return 0;
+          const col = m[1].toUpperCase().charCodeAt(0) - 65;
+          const row = parseInt(m[2]) - 1;
+          if (row < 0 || row >= data.length || col < 0 || col >= data[0].length) return 0;
+          const v = data[row][col];
+          return v.startsWith("=") ? evalFormula(v) : (parseFloat(v) || 0);
+        };
+        const rangeMatch = expr.match(/^(SUM|AVG|MIN|MAX)\(([A-Z]\d+):([A-Z]\d+)\)$/i);
+        if (rangeMatch) {
+          const fn = rangeMatch[1].toUpperCase();
+          const sc = rangeMatch[2][0].toUpperCase().charCodeAt(0) - 65;
+          const sr = parseInt(rangeMatch[2].slice(1)) - 1;
+          const ec = rangeMatch[3][0].toUpperCase().charCodeAt(0) - 65;
+          const er = parseInt(rangeMatch[3].slice(1)) - 1;
+          const vals: number[] = [];
+          for (let r = sr; r <= er; r++) for (let c = sc; c <= ec; c++) {
+            if (r >= 0 && r < data.length && c >= 0 && c < data[0].length) {
+              const v = data[r][c];
+              vals.push(v.startsWith("=") ? evalFormula(v) : (parseFloat(v) || 0));
+            }
+          }
+          if (fn === "SUM") return vals.reduce((a, b) => a + b, 0);
+          if (fn === "AVG") return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+          if (fn === "MIN") return vals.length > 0 ? Math.min(...vals) : 0;
+          if (fn === "MAX") return vals.length > 0 ? Math.max(...vals) : 0;
+        }
+        const arith = expr.match(/^([A-Z]\d+)\s*([+\-*/])\s*([A-Z]\d+)$/i);
+        if (arith) {
+          const a = cellRef(arith[1]), b = cellRef(arith[3]);
+          if (arith[2] === "+") return a + b;
+          if (arith[2] === "-") return a - b;
+          if (arith[2] === "*") return a * b;
+          if (arith[2] === "/") return b !== 0 ? a / b : 0;
+        }
+        if (/^[A-Z]\d+$/i.test(expr)) return cellRef(expr);
+        return parseFloat(expr) || 0;
+      };
+      const displayCell = (val: string): string => {
+        if (!val.startsWith("=")) return val;
+        try { const r = evalFormula(val); return Number.isFinite(r) ? (Number.isInteger(r) ? r.toString() : r.toFixed(2)) : "ERR"; } catch { return "ERR"; }
+      };
       return (
         <table className="w-full h-full border-collapse" style={{ fontSize: s.fontSize || 14 }}>
           <tbody>
@@ -288,13 +335,103 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
                       fontWeight: ri === 0 ? "bold" : "normal",
                     }}
                   >
-                    {cell}
+                    {displayCell(cell)}
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
+      );
+    }
+
+    // ─── Mindmap (read-only in broadcast) ───────────────────
+    if (el.type === "mindmap") {
+      const root = el.mindmapData || { id: "root", label: "Idée centrale", children: [] };
+      const colors = ["#ea580c", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899"];
+      const allElements: React.ReactNode[] = [];
+      const allLines: React.ReactNode[] = [];
+
+      const getNodeCount = (n: MindmapNode): number => 1 + n.children.reduce((sum, c) => sum + getNodeCount(c), 0);
+
+      const renderTree = (node: MindmapNode, depth: number, x: number, yCenter: number, totalHeight: number, parentX: number, parentY: number) => {
+        const color = colors[depth % colors.length];
+        const nodeW = depth === 0 ? 140 : 110;
+        const nodeH = depth === 0 ? 40 : 30;
+        const fontSize = depth === 0 ? 14 : 11;
+        const y = yCenter - nodeH / 2;
+
+        if (depth > 0) {
+          allLines.push(<line key={`line-${node.id}`} x1={parentX} y1={parentY} x2={x} y2={y + nodeH / 2} stroke={color} strokeWidth={2} opacity={0.6} />);
+        }
+
+        allElements.push(
+          <foreignObject key={node.id} x={x - nodeW / 2} y={y} width={nodeW} height={nodeH}>
+            <div style={{
+              width: "100%", height: "100%",
+              background: depth === 0 ? color : `${color}22`,
+              border: `2px solid ${color}`,
+              borderRadius: depth === 0 ? 20 : 12,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "2px 6px", fontSize, fontWeight: depth === 0 ? "bold" : "normal",
+              color: depth === 0 ? "#fff" : (s.color || "#333"),
+              overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+            }}>{node.label}</div>
+          </foreignObject>
+        );
+
+        if (node.children.length > 0) {
+          const childSpacing = Math.min(50, totalHeight / node.children.length);
+          const totalChildH = node.children.length * childSpacing;
+          const startY = yCenter - totalChildH / 2 + childSpacing / 2;
+          const nextX = x + (depth === 0 ? 160 : 130);
+          node.children.forEach((child, i) => {
+            renderTree(child, depth + 1, nextX, startY + i * childSpacing, childSpacing, x, yCenter);
+          });
+        }
+      };
+
+      const svgW = 800;
+      const svgH = Math.max(400, getNodeCount(root) * 45);
+      renderTree(root, 0, 80, svgH / 2, svgH * 0.8, 80, svgH / 2);
+
+      return (
+        <div style={{ width: "100%", height: "100%", overflow: "hidden", background: s.backgroundColor || "transparent" }}>
+          <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "100%" }}>
+            {allLines}{allElements}
+          </svg>
+        </div>
+      );
+    }
+
+    // ─── Code (read-only in broadcast) ──────────────────────
+    if (el.type === "code") {
+      const code = el.codeContent || "";
+      const lang = el.codeLanguage || "javascript";
+      return (
+        <div style={{
+          width: "100%", height: "100%", backgroundColor: "#1e1e1e",
+          borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "6px 12px", backgroundColor: "#2d2d2d", borderBottom: "1px solid #404040",
+          }}>
+            <span style={{ color: "#808080", fontSize: 11, fontFamily: "monospace" }}>{lang}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(code); }}
+              style={{
+                background: "transparent", border: "1px solid #555", borderRadius: 4,
+                color: "#ccc", fontSize: 11, padding: "2px 8px", cursor: "pointer",
+              }}
+            >Copier</button>
+          </div>
+          <pre style={{
+            flex: 1, padding: "12px 16px", overflow: "auto",
+            fontFamily: "'Courier New', monospace", fontSize: s.fontSize || 13,
+            lineHeight: 1.6, color: "#d4d4d4", whiteSpace: "pre", margin: 0,
+          }}>{code}</pre>
+        </div>
       );
     }
 
