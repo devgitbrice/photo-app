@@ -14,6 +14,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
   const [size, setSize] = useState<number>(50);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const NO_TAGS = "__no_tags__";
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
@@ -72,7 +73,9 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
         return itemData.doc_type === selectedDocType;
       });
     }
-    if (selectedTagId) {
+    if (selectedTagId === NO_TAGS) {
+      result = result.filter((item) => !item.tags || item.tags.length === 0);
+    } else if (selectedTagId) {
       result = result.filter((item) =>
         item.tags?.some((t) => t.id === selectedTagId)
       );
@@ -116,8 +119,9 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     return counts;
   }, [items]);
 
-
-
+  const noTagsCount = useMemo(() => {
+    return items.filter((item) => !item.tags || item.tags.length === 0).length;
+  }, [items]);
 
 
 
@@ -126,7 +130,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
 
   // --- NAVIGATION CLAVIER ---
   const tagIdList = useMemo<(string | null)[]>(
-    () => [null, ...allTags.map((t) => t.id)],
+    () => [null, ...allTags.map((t) => t.id), NO_TAGS],
     [allTags]
   );
 
@@ -281,14 +285,24 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
 
         <div className="p-3 flex flex-col gap-1 bg-neutral-900 border-t border-neutral-800">
           <h3 className="font-medium text-neutral-200 truncate text-sm group-hover:text-blue-400 transition-colors">{item.title}</h3>
-          <div className="flex items-center justify-between text-[10px] text-neutral-500 uppercase tracking-wide">
-            <span suppressHydrationWarning>
+          <div className="flex items-center gap-2 text-[10px] text-neutral-500 uppercase tracking-wide">
+            <span suppressHydrationWarning className="shrink-0">
               {item.created_at ? format(new Date(item.created_at), "dd MMM", { locale: fr }) : "-"}
             </span>
             {item.tags && item.tags.length > 0 && (
-              <div className="flex gap-1">
-                {item.tags.slice(0, 3).map((tag, idx) => (
-                  <span key={idx} className="w-2 h-2 rounded-full ring-1 ring-neutral-900" style={{ backgroundColor: (tag as any).color || '#555' }} title={(tag as any).name || ''} />
+              <div className="flex gap-1 flex-wrap justify-end flex-1 min-w-0">
+                {item.tags.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedTagId(selectedTagId === tag.id ? null : tag.id);
+                    }}
+                    className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 hover:bg-blue-600 hover:text-white cursor-pointer transition-colors normal-case tracking-normal text-[10px] leading-tight"
+                  >
+                    {(tag as any).name}
+                  </span>
                 ))}
               </div>
             )}
@@ -336,6 +350,14 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
                     <span className="opacity-60 text-xs py-0.5">({tagCounts[tag.id] || 0})</span>
                   </button>
                 ))}
+                {noTagsCount > 0 && (
+                  <div className="border-t border-neutral-800 mt-2 pt-2">
+                    <button onClick={() => setSelectedTagId(selectedTagId === NO_TAGS ? null : NO_TAGS)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between ${selectedTagId === NO_TAGS ? "bg-blue-600 text-white" : "text-neutral-400 hover:text-white hover:bg-neutral-800"}`}>
+                      <span>Sans Tags</span>
+                      <span className="opacity-60 text-xs py-0.5">({noTagsCount})</span>
+                    </button>
+                  </div>
+                )}
               </nav>
             </div>
           )}
@@ -361,6 +383,9 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
                   {allTags.map((tag) => (
                     <button key={tag.id} onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)} className={`px-3 py-1.5 rounded-full text-sm ${selectedTagId === tag.id ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>{tag.name}</button>
                   ))}
+                  {noTagsCount > 0 && (
+                    <button onClick={() => setSelectedTagId(selectedTagId === NO_TAGS ? null : NO_TAGS)} className={`px-3 py-1.5 rounded-full text-sm ${selectedTagId === NO_TAGS ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"}`}>Sans Tags</button>
+                  )}
                 </div>
               </div>
             )}
