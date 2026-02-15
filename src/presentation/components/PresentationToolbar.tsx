@@ -9,7 +9,7 @@ import {
   HardDrive, Search, Banana,
   GitBranch, Code2,
 } from "lucide-react";
-import type { Slide, SlideElement, ElementStyle, ShapeType } from "../types";
+import type { Slide, SlideElement, ElementStyle, ShapeType, PresentationStyles } from "../types";
 import {
   TEXT_PRESETS, AVAILABLE_SHAPES, AVAILABLE_ICONS, TEXT_EFFECTS, FONT_FAMILIES, CODE_LANGUAGES,
 } from "../types";
@@ -21,9 +21,13 @@ type Props = {
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   onNanoBanana?: () => void;
+  slides?: Slide[];
+  setSlides?: (s: Slide[]) => void;
+  presentationStyles?: PresentationStyles;
+  setPresentationStyles?: (s: PresentationStyles) => void;
 };
 
-export default function PresentationToolbar({ slide, updateSlide, selectedId, setSelectedId, onNanoBanana }: Props) {
+export default function PresentationToolbar({ slide, updateSlide, selectedId, setSelectedId, onNanoBanana, slides, setSlides, presentationStyles, setPresentationStyles }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedEl = slide.elements.find((e) => e.id === selectedId);
@@ -72,6 +76,29 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
     if (!selectedEl) return;
     const minZ = Math.min(...slide.elements.map((e) => e.zIndex));
     updateElement({ zIndex: Math.max(0, minZ - 1) });
+  };
+
+  // ─── Global role style helpers ─────────────────────────────
+  const applyRoleStyle = (role: "title" | "body", styleUpdates: Partial<ElementStyle>) => {
+    if (!slides || !setSlides) return;
+    const newSlides = slides.map((s) => ({
+      ...s,
+      elements: s.elements.map((el) =>
+        el.textRole === role ? { ...el, style: { ...el.style, ...styleUpdates } } : el
+      ),
+    }));
+    setSlides(newSlides);
+  };
+
+  const assignRole = (role: "title" | "body") => {
+    if (!selectedEl || !presentationStyles) return;
+    const roleStyle = presentationStyles[role];
+    const newRole = selectedEl.textRole === role ? undefined : role;
+    if (newRole) {
+      updateElement({ textRole: newRole, style: { ...selectedEl.style, fontFamily: roleStyle.fontFamily, fontSize: roleStyle.fontSize } });
+    } else {
+      updateElement({ textRole: undefined });
+    }
   };
 
   // ─── Insert handlers ───────────────────────────────────────
@@ -433,23 +460,88 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
             </div>
           )}
 
-          {/* Text styles presets */}
-          {selectedEl.type === "text" && (
+          {/* Titre / Corps role buttons + Effects */}
+          {selectedEl.type === "text" && presentationStyles && (
             <div className="flex items-center gap-1 border-r border-neutral-700 pr-3 mr-2">
-              <div className="relative">
-                <Btn onClick={() => setOpenMenu(openMenu === "presets" ? null : "presets")} title="Styles prédéfinis">
-                  <span className="flex items-center gap-0.5 text-xs">Style<ChevronDown size={10} /></span>
-                </Btn>
-                <Dropdown name="presets">
-                  {TEXT_PRESETS.map((p) => (
-                    <button key={p.name} onClick={() => { updateStyle(p.style); setOpenMenu(null); }}
-                      className="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 rounded">
-                      {p.name}
-                    </button>
-                  ))}
-                </Dropdown>
-              </div>
+              {/* Titre */}
+              <button
+                onClick={() => assignRole("title")}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${
+                  selectedEl.textRole === "title"
+                    ? "bg-orange-600 text-white"
+                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                }`}
+                title="Attribuer le style Titre"
+              >
+                Titre
+              </button>
+              <select
+                value={presentationStyles.title.fontFamily}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPresentationStyles?.({ ...presentationStyles, title: { ...presentationStyles.title, fontFamily: val } });
+                  applyRoleStyle("title", { fontFamily: val });
+                }}
+                className="bg-neutral-800 text-neutral-300 text-[11px] rounded px-1 py-0.5 border border-neutral-700 max-w-[80px]"
+                title="Police des titres"
+              >
+                {FONT_FAMILIES.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+              <input
+                type="number"
+                value={presentationStyles.title.fontSize}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setPresentationStyles?.({ ...presentationStyles, title: { ...presentationStyles.title, fontSize: val } });
+                  applyRoleStyle("title", { fontSize: val });
+                }}
+                className="bg-neutral-800 text-neutral-300 text-[11px] rounded px-1 py-0.5 border border-neutral-700 w-10"
+                min={8} max={120}
+                title="Taille des titres"
+              />
 
+              <span className="w-px h-4 bg-neutral-700 mx-1" />
+
+              {/* Corps */}
+              <button
+                onClick={() => assignRole("body")}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${
+                  selectedEl.textRole === "body"
+                    ? "bg-orange-600 text-white"
+                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                }`}
+                title="Attribuer le style Corps"
+              >
+                Corps
+              </button>
+              <select
+                value={presentationStyles.body.fontFamily}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPresentationStyles?.({ ...presentationStyles, body: { ...presentationStyles.body, fontFamily: val } });
+                  applyRoleStyle("body", { fontFamily: val });
+                }}
+                className="bg-neutral-800 text-neutral-300 text-[11px] rounded px-1 py-0.5 border border-neutral-700 max-w-[80px]"
+                title="Police du corps"
+              >
+                {FONT_FAMILIES.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+              <input
+                type="number"
+                value={presentationStyles.body.fontSize}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setPresentationStyles?.({ ...presentationStyles, body: { ...presentationStyles.body, fontSize: val } });
+                  applyRoleStyle("body", { fontSize: val });
+                }}
+                className="bg-neutral-800 text-neutral-300 text-[11px] rounded px-1 py-0.5 border border-neutral-700 w-10"
+                min={8} max={120}
+                title="Taille du corps"
+              />
+
+              <span className="w-px h-4 bg-neutral-700 mx-1" />
+
+              {/* Effects dropdown */}
               <div className="relative">
                 <Btn onClick={() => setOpenMenu(openMenu === "effects" ? null : "effects")} title="Effets de texte">
                   <span className="flex items-center gap-0.5 text-xs">Effets<ChevronDown size={10} /></span>

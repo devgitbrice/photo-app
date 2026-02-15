@@ -76,6 +76,8 @@ export type SlideElement = {
   // Code
   codeContent?: string;
   codeLanguage?: string;
+  // Text role (for global style system)
+  textRole?: "title" | "body";
   // Style
   style: ElementStyle;
 };
@@ -155,6 +157,38 @@ export function createDefaultSlide(): Slide {
     ],
     backgroundColor: "#ffffff",
   };
+}
+
+// ─── Presentation Styles (global title/body) ─────────────────────
+export type PresentationStyles = {
+  title: { fontFamily: string; fontSize: number };
+  body: { fontFamily: string; fontSize: number };
+};
+
+export const DEFAULT_PRESENTATION_STYLES: PresentationStyles = {
+  title: { fontFamily: "Arial", fontSize: 40 },
+  body: { fontFamily: "Arial", fontSize: 18 },
+};
+
+export type PresentationData = {
+  slides: Slide[];
+  styles: PresentationStyles;
+};
+
+export function parsePresentationData(content: string): PresentationData {
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return { slides: parsed.map(migrateSlide), styles: DEFAULT_PRESENTATION_STYLES };
+    }
+    if (parsed && typeof parsed === "object" && "slides" in parsed) {
+      return {
+        slides: (parsed.slides as unknown[]).map(migrateSlide),
+        styles: parsed.styles || DEFAULT_PRESENTATION_STYLES,
+      };
+    }
+  } catch {}
+  return { slides: [createDefaultSlide()], styles: DEFAULT_PRESENTATION_STYLES };
 }
 
 // ─── Text Presets ─────────────────────────────────────────────────
