@@ -11,8 +11,8 @@ import PresentationTags from "./PresentationTags";
 import BroadcastMode from "./BroadcastMode";
 import NanoBananaPanel from "./NanoBananaPanel";
 import type { Tag } from "@/features/mydrive/types";
-import type { Slide, SlideElement } from "../types";
-import { parseSlides, createDefaultSlide } from "../types";
+import type { Slide, SlideElement, PresentationStyles } from "../types";
+import { parsePresentationData, createDefaultSlide, DEFAULT_PRESENTATION_STYLES } from "../types";
 
 interface PresentationEditorProps {
   initialData?: {
@@ -25,16 +25,22 @@ interface PresentationEditorProps {
 }
 
 export default function PresentationEditor({ initialData }: PresentationEditorProps) {
+  const initialPData = initialData?.content ? parsePresentationData(initialData.content) : null;
+
   const [docId, setDocId] = useState(initialData?.id || "");
   const [docTitle, setDocTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.observation || "");
 
   const [slides, setSlides] = useState<Slide[]>(
-    initialData?.content ? parseSlides(initialData.content) : [createDefaultSlide()]
+    initialPData?.slides || [createDefaultSlide()]
+  );
+  const [presentationStyles, setPresentationStyles] = useState<PresentationStyles>(
+    initialPData?.styles || DEFAULT_PRESENTATION_STYLES
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
+  const [copiedSlide, setCopiedSlide] = useState<Slide | null>(null);
 
   const [broadcasting, setBroadcasting] = useState(false);
   const [nightMode, setNightMode] = useState(false);
@@ -50,6 +56,59 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     setSelectedElementId(null);
     setEditingElementId(null);
   }, [currentIndex]);
+
+  // ─── Slide-level keyboard shortcuts ────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Only handle when no element is selected/edited
+      if (selectedElementId || editingElementId) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target as HTMLElement)?.isContentEditable) return;
+
+      // Cmd+C: Copy current slide
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        e.preventDefault();
+        setCopiedSlide(structuredClone(slides[currentIndex]));
+      }
+      // Cmd+V: Paste copied slide
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        if (!copiedSlide) return;
+        e.preventDefault();
+        const dup: Slide = {
+          ...copiedSlide,
+          id: crypto.randomUUID(),
+          elements: copiedSlide.elements.map((el) => ({ ...el, id: crypto.randomUUID() })),
+        };
+        const newSlides = [...slides];
+        newSlides.splice(currentIndex + 1, 0, dup);
+        setSlides(newSlides);
+        setCurrentIndex(currentIndex + 1);
+      }
+      // Cmd+D: Duplicate current slide
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        e.preventDefault();
+        const dup: Slide = {
+          ...slides[currentIndex],
+          id: crypto.randomUUID(),
+          elements: slides[currentIndex].elements.map((el) => ({ ...el, id: crypto.randomUUID() })),
+        };
+        const newSlides = [...slides];
+        newSlides.splice(currentIndex + 1, 0, dup);
+        setSlides(newSlides);
+        setCurrentIndex(currentIndex + 1);
+      }
+      // Backspace / Delete: Delete current slide
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        if (slides.length <= 1) return;
+        const newSlides = slides.filter((_, i) => i !== currentIndex);
+        setSlides(newSlides);
+        if (currentIndex >= newSlides.length) setCurrentIndex(newSlides.length - 1);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedElementId, editingElementId, slides, currentIndex, copiedSlide]);
 
   // Listen for chatbot insert events — add text element to current slide
   useEffect(() => {
@@ -85,7 +144,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     savingRef.current = true;
     setStatus("saving");
     try {
-      const content = JSON.stringify(slides);
+      const content = JSON.stringify({ slides, styles: presentationStyles });
       if (docId) {
         await updateDriveItemAction(docId, { title: docTitle.trim(), content, observation: description });
       } else {
@@ -102,7 +161,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
       savingRef.current = false;
       setStatus("idle");
     }
-  }, [docId, docTitle, slides, description, selectedTags]);
+  }, [docId, docTitle, slides, presentationStyles, description, selectedTags]);
 
   const scheduleAutoSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -115,14 +174,14 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
 
   useEffect(() => {
     if (docTitle.trim()) scheduleAutoSave();
-  }, [slides, docTitle, description, scheduleAutoSave]);
+  }, [slides, docTitle, description, presentationStyles, scheduleAutoSave]);
 
   const handleSave = async () => {
     if (!docTitle.trim()) return alert("Le titre est requis");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setStatus("saving");
     try {
-      const content = JSON.stringify(slides);
+      const content = JSON.stringify({ slides, styles: presentationStyles });
       if (docId) {
         await updateDriveItemAction(docId, { title: docTitle.trim(), content, observation: description });
       } else {
@@ -203,6 +262,10 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         selectedId={selectedElementId}
         setSelectedId={setSelectedElementId}
         onNanoBanana={() => setNanoBananaOpen(true)}
+        slides={slides}
+        setSlides={setSlides}
+        presentationStyles={presentationStyles}
+        setPresentationStyles={setPresentationStyles}
       />
 
       <div className="flex-1 flex overflow-hidden">
