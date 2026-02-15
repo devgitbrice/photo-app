@@ -7,10 +7,11 @@ import {
   List, ListOrdered, Columns2, Trash2, Copy, ArrowUpToLine, ArrowDownToLine,
   Palette, ChevronDown, RotateCcw,
   HardDrive, Search, Banana,
+  GitBranch, Code2,
 } from "lucide-react";
 import type { Slide, SlideElement, ElementStyle, ShapeType } from "../types";
 import {
-  TEXT_PRESETS, AVAILABLE_SHAPES, AVAILABLE_ICONS, TEXT_EFFECTS, FONT_FAMILIES,
+  TEXT_PRESETS, AVAILABLE_SHAPES, AVAILABLE_ICONS, TEXT_EFFECTS, FONT_FAMILIES, CODE_LANGUAGES,
 } from "../types";
 import { ICON_MAP } from "./IconMap";
 
@@ -152,6 +153,39 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
     });
   };
 
+  const addMindmap = () => {
+    addElement({
+      id: crypto.randomUUID(), type: "mindmap",
+      x: 5, y: 10, width: 90, height: 75,
+      rotation: 0, zIndex: 0,
+      mindmapData: {
+        id: crypto.randomUUID(),
+        label: "Idée centrale",
+        children: [
+          { id: crypto.randomUUID(), label: "Branche 1", children: [] },
+          { id: crypto.randomUUID(), label: "Branche 2", children: [] },
+          { id: crypto.randomUUID(), label: "Branche 3", children: [] },
+        ],
+      },
+      style: { color: "#333333" },
+    });
+  };
+
+  const addCode = (language: string = "javascript") => {
+    addElement({
+      id: crypto.randomUUID(), type: "code",
+      x: 10, y: 15, width: 80, height: 60,
+      rotation: 0, zIndex: 0,
+      codeContent: language === "python"
+        ? 'def hello():\n    print("Hello, World!")\n\nhello()'
+        : language === "html"
+        ? '<div class="container">\n  <h1>Hello World</h1>\n  <p>My content here</p>\n</div>'
+        : 'function hello() {\n  console.log("Hello, World!");\n}\n\nhello();',
+      codeLanguage: language,
+      style: { fontSize: 13 },
+    });
+  };
+
   // ─── Dropdown wrapper ──────────────────────────────────────
   const Dropdown = ({ name, children }: { name: string; children: React.ReactNode }) => (
     <div className="relative">
@@ -255,7 +289,11 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
             <span className="flex items-center gap-0.5"><Table2 size={16} /><ChevronDown size={10} /></span>
           </Btn>
           <Dropdown name="table">
-            <p className="text-xs text-neutral-400 mb-2 px-1">Taille du tableau</p>
+            <button onClick={() => { addTable(3, 3); setOpenMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 rounded mb-1">
+              Tableau 3×3 (défaut)
+            </button>
+            <p className="text-xs text-neutral-400 mb-2 px-1">Ou choisir une taille :</p>
             <div className="grid grid-cols-5 gap-1">
               {[2, 3, 4, 5, 6].map((r) =>
                 [2, 3, 4, 5].map((c) => (
@@ -265,6 +303,28 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
                   </button>
                 ))
               )}
+            </div>
+            <p className="text-[10px] text-neutral-500 mt-2 px-1">Formules : =SUM(A1:A3), =A1+B1, =AVG, =MIN, =MAX</p>
+          </Dropdown>
+        </div>
+
+        <Btn onClick={addMindmap} title="Mindmap">
+          <GitBranch size={16} />
+        </Btn>
+
+        <div className="relative">
+          <Btn onClick={() => setOpenMenu(openMenu === "code" ? null : "code")} title="Code">
+            <span className="flex items-center gap-0.5"><Code2 size={16} /><ChevronDown size={10} /></span>
+          </Btn>
+          <Dropdown name="code">
+            <p className="text-xs text-neutral-400 mb-2 px-1">Langage</p>
+            <div className="grid grid-cols-2 gap-1 max-h-[300px] overflow-y-auto">
+              {CODE_LANGUAGES.map((lang) => (
+                <button key={lang} onClick={() => { addCode(lang); setOpenMenu(null); }}
+                  className="px-2 py-1.5 text-xs text-neutral-300 hover:bg-neutral-700 rounded text-left">
+                  {lang}
+                </button>
+              ))}
             </div>
           </Dropdown>
         </div>
@@ -509,6 +569,52 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
               }} className="text-xs text-neutral-300 hover:bg-neutral-700 px-2 py-1 rounded">
                 - Colonne
               </button>
+            </div>
+          )}
+
+          {/* Mindmap controls */}
+          {selectedEl.type === "mindmap" && (
+            <div className="flex items-center gap-1 border-r border-neutral-700 pr-3 mr-2">
+              <span className="text-xs text-neutral-500">Mindmap</span>
+              <button onClick={() => {
+                const root = selectedEl.mindmapData;
+                if (!root) return;
+                updateElement({
+                  mindmapData: {
+                    ...root,
+                    children: [...root.children, { id: crypto.randomUUID(), label: "Nouveau", children: [] }],
+                  },
+                });
+              }} className="text-xs text-neutral-300 hover:bg-neutral-700 px-2 py-1 rounded">
+                + Branche
+              </button>
+              {/* Background color */}
+              <label className="relative cursor-pointer" title="Couleur de fond">
+                <div className="p-1 hover:bg-neutral-700 rounded text-xs text-neutral-400">Fond</div>
+                <input type="color" value={s.backgroundColor || "#ffffff"}
+                  onChange={(e) => updateStyle({ backgroundColor: e.target.value })}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+              </label>
+            </div>
+          )}
+
+          {/* Code controls */}
+          {selectedEl.type === "code" && (
+            <div className="flex items-center gap-1 border-r border-neutral-700 pr-3 mr-2">
+              <select
+                value={selectedEl.codeLanguage || "javascript"}
+                onChange={(e) => updateElement({ codeLanguage: e.target.value })}
+                className="bg-neutral-800 text-neutral-300 text-xs rounded px-1 py-1 border border-neutral-700 max-w-[120px]"
+                title="Langage"
+              >
+                {CODE_LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <label className="text-xs text-neutral-400 flex items-center gap-1">
+                Taille:
+                <input type="number" value={s.fontSize || 13} min={8} max={30}
+                  onChange={(e) => updateStyle({ fontSize: Number(e.target.value) })}
+                  className="bg-neutral-800 text-neutral-300 text-xs rounded px-1 py-1 border border-neutral-700 w-12" />
+              </label>
             </div>
           )}
 

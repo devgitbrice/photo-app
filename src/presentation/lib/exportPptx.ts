@@ -47,6 +47,12 @@ export async function exportToPptx(slides: Slide[], title: string): Promise<void
             // Icons exported as text placeholder
             addIconAsText(pptSlide, el, pos);
             break;
+          case "mindmap":
+            addMindmapAsText(pptSlide, el, pos);
+            break;
+          case "code":
+            addCodeElement(pptSlide, el, pos);
+            break;
         }
       } catch (e) {
         console.warn("Failed to export element:", el.id, e);
@@ -188,5 +194,55 @@ function addIconAsText(
     color: toColor(el.style.color),
     align: "center",
     valign: "middle",
+  });
+}
+
+function flattenMindmap(node: { id: string; label: string; children: { id: string; label: string; children: unknown[] }[] }, depth: number = 0): string {
+  const indent = "  ".repeat(depth);
+  const prefix = depth === 0 ? "" : "- ";
+  let text = `${indent}${prefix}${node.label}\n`;
+  for (const child of node.children) {
+    text += flattenMindmap(child as { id: string; label: string; children: { id: string; label: string; children: unknown[] }[] }, depth + 1);
+  }
+  return text;
+}
+
+function addMindmapAsText(
+  slide: PptxGenJS.Slide,
+  el: SlideElement,
+  pos: { x: number; y: number; w: number; h: number; rotate: number }
+) {
+  const root = el.mindmapData;
+  if (!root) return;
+  const text = flattenMindmap(root);
+  slide.addText(text, {
+    x: pos.x, y: pos.y, w: pos.w, h: pos.h,
+    rotate: pos.rotate,
+    fontSize: 12,
+    fontFace: "Arial",
+    color: toColor(el.style.color),
+    align: "left",
+    valign: "top",
+    wrap: true,
+  });
+}
+
+function addCodeElement(
+  slide: PptxGenJS.Slide,
+  el: SlideElement,
+  pos: { x: number; y: number; w: number; h: number; rotate: number }
+) {
+  const code = el.codeContent || "";
+  const s = el.style;
+  slide.addText(code, {
+    x: pos.x, y: pos.y, w: pos.w, h: pos.h,
+    rotate: pos.rotate,
+    fontSize: s.fontSize ? Math.round(s.fontSize * 0.75) : 10,
+    fontFace: "Courier New",
+    color: "D4D4D4",
+    fill: { color: "1E1E1E" },
+    align: "left",
+    valign: "top",
+    wrap: true,
   });
 }
