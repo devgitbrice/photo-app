@@ -9,8 +9,9 @@ import PresentationToolbar from "./PresentationToolbar";
 import SlideCanvas from "./SlideCanvas";
 import PresentationTags from "./PresentationTags";
 import BroadcastMode from "./BroadcastMode";
+import NanoBananaPanel from "./NanoBananaPanel";
 import type { Tag } from "@/features/mydrive/types";
-import type { Slide } from "../types";
+import type { Slide, SlideElement } from "../types";
 import { parseSlides, createDefaultSlide } from "../types";
 
 interface PresentationEditorProps {
@@ -37,6 +38,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
 
   const [broadcasting, setBroadcasting] = useState(false);
   const [nightMode, setNightMode] = useState(false);
+  const [nanoBananaOpen, setNanoBananaOpen] = useState(false);
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -48,6 +50,34 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     setSelectedElementId(null);
     setEditingElementId(null);
   }, [currentIndex]);
+
+  // Listen for chatbot insert events — add text element to current slide
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail?.text;
+      if (!text) return;
+      const maxZ = slides[currentIndex]?.elements.length > 0
+        ? Math.max(...slides[currentIndex].elements.map((el) => el.zIndex))
+        : 0;
+      const newEl: SlideElement = {
+        id: crypto.randomUUID(),
+        type: "text",
+        x: 10, y: 30, width: 80, height: 50,
+        rotation: 0, zIndex: maxZ + 1,
+        content: text,
+        style: { fontSize: 18, color: "#333333", textAlign: "left" },
+      };
+      const newSlides = [...slides];
+      newSlides[currentIndex] = {
+        ...newSlides[currentIndex],
+        elements: [...newSlides[currentIndex].elements, newEl],
+      };
+      setSlides(newSlides);
+      setSelectedElementId(newEl.id);
+    };
+    window.addEventListener("chatbot-insert", handler);
+    return () => window.removeEventListener("chatbot-insert", handler);
+  }, [slides, currentIndex]);
 
   // ─── Auto-save (debounce 1.5s) ─────────────────────────────
   const autoSave = useCallback(async () => {
@@ -117,6 +147,26 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     setSlides(newSlides);
   };
 
+  const addImageToSlide = (imageDataUrl: string) => {
+    const maxZ = currentSlide.elements.length > 0
+      ? Math.max(...currentSlide.elements.map((e) => e.zIndex))
+      : 0;
+    const newEl: SlideElement = {
+      id: crypto.randomUUID(),
+      type: "image",
+      x: 20, y: 15, width: 60, height: 60,
+      rotation: 0, zIndex: maxZ + 1,
+      src: imageDataUrl,
+      objectFit: "contain",
+      style: {},
+    };
+    updateCurrentSlide({
+      ...currentSlide,
+      elements: [...currentSlide.elements, newEl],
+    });
+    setSelectedElementId(newEl.id);
+  };
+
   return (
     <div className="flex flex-col h-full w-full bg-neutral-900 text-white">
       {broadcasting && (
@@ -126,6 +176,13 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
           onClose={() => setBroadcasting(false)}
           onSlidesChange={setSlides}
           nightMode={nightMode}
+        />
+      )}
+
+      {nanoBananaOpen && (
+        <NanoBananaPanel
+          onClose={() => setNanoBananaOpen(false)}
+          onAddToSlide={addImageToSlide}
         />
       )}
 
@@ -145,6 +202,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         updateSlide={updateCurrentSlide}
         selectedId={selectedElementId}
         setSelectedId={setSelectedElementId}
+        onNanoBanana={() => setNanoBananaOpen(true)}
       />
 
       <div className="flex-1 flex overflow-hidden">
