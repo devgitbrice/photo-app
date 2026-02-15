@@ -59,6 +59,22 @@ export default function TableGrid({ data, setData }: TableGridProps) {
     setFormulaMode(false);
   }, []);
 
+  // Listen for table-insert-link events (Cmd+K → Ajouter)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const item = (e as CustomEvent).detail;
+      if (!item?.title) return;
+      const r = activeCell?.r ?? 0;
+      const c = activeCell?.c ?? 0;
+      const newData = data.map((row) => [...row]);
+      newData[r][c] = item.title;
+      setData(newData);
+      setActiveCell({ r, c });
+    };
+    window.addEventListener("table-insert-link", handler);
+    return () => window.removeEventListener("table-insert-link", handler);
+  }, [activeCell, data, setData]);
+
   const startEdit = useCallback(
     (r: number, c: number, initialValue?: string) => {
       const val = initialValue !== undefined ? initialValue : data[r][c] || "";

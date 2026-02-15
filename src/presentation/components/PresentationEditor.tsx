@@ -10,7 +10,7 @@ import SlideCanvas from "./SlideCanvas";
 import PresentationTags from "./PresentationTags";
 import BroadcastMode from "./BroadcastMode";
 import NanoBananaPanel from "./NanoBananaPanel";
-import FileSearchModal from "@/components/FileSearchModal";
+import FileSearchModal, { getEditUrl, type SearchResult } from "@/components/FileSearchModal";
 import type { Tag } from "@/features/mydrive/types";
 import type { Slide, SlideElement, PresentationStyles } from "../types";
 import { parsePresentationData, createDefaultSlide, DEFAULT_PRESENTATION_STYLES } from "../types";
@@ -220,6 +220,44 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     setSlides(newSlides);
   };
 
+  const handleInsertDocLink = useCallback((item: SearchResult) => {
+    const typeLabels: Record<string, string> = {
+      doc: "Doc", python: "Python", mindmap: "Mindmap",
+      table: "Table", presentation: "Présentation",
+    };
+    const label = item.doc_type ? typeLabels[item.doc_type] || "" : "";
+    const prefix = label ? `[${label}] ` : "";
+
+    const maxZ = slides[currentIndex]?.elements.length > 0
+      ? Math.max(...slides[currentIndex].elements.map((el) => el.zIndex))
+      : 0;
+    const newEl: SlideElement = {
+      id: crypto.randomUUID(),
+      type: "text",
+      x: 15, y: 40, width: 70, height: 10,
+      rotation: 0, zIndex: maxZ + 1,
+      content: `${prefix}${item.title}`,
+      style: {
+        fontSize: 18,
+        fontWeight: "500",
+        color: "#3b82f6",
+        backgroundColor: "#1e293b",
+        textAlign: "center",
+        borderRadius: 8,
+        border: "1px solid #334155",
+        padding: 10,
+        textDecoration: "underline",
+      },
+    };
+    const newSlides = [...slides];
+    newSlides[currentIndex] = {
+      ...newSlides[currentIndex],
+      elements: [...newSlides[currentIndex].elements, newEl],
+    };
+    setSlides(newSlides);
+    setSelectedElementId(newEl.id);
+  }, [slides, currentIndex]);
+
   const addImageToSlide = (imageDataUrl: string) => {
     const maxZ = currentSlide.elements.length > 0
       ? Math.max(...currentSlide.elements.map((e) => e.zIndex))
@@ -252,7 +290,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         />
       )}
 
-      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} />
+      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} onInsert={handleInsertDocLink} />
 
       {nanoBananaOpen && (
         <NanoBananaPanel

@@ -49,6 +49,50 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
     };
   }, [updateTocAndSave]);
 
+  // Listen for doc-insert-link events (Cmd+K → Ajouter)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const item = (e as CustomEvent).detail;
+      if (!item?.id || !item?.title) return;
+
+      const typeLabels: Record<string, { label: string; bg: string; color: string }> = {
+        doc: { label: "Doc", bg: "#1e3a5f", color: "#60a5fa" },
+        python: { label: "Python", bg: "#3b3510", color: "#facc15" },
+        mindmap: { label: "Mindmap", bg: "#3b1f5e", color: "#c084fc" },
+        table: { label: "Table", bg: "#14432a", color: "#4ade80" },
+        presentation: { label: "Présentation", bg: "#4a2c17", color: "#fb923c" },
+      };
+      const info = item.doc_type ? typeLabels[item.doc_type] : null;
+      const badgeHtml = info
+        ? `<span style="font-size:11px;font-weight:600;color:${info.color};margin-right:4px;">${info.label}</span>`
+        : "";
+
+      let href = "/mydrive";
+      switch (item.doc_type) {
+        case "python": href = `/editpython/${item.id}`; break;
+        case "doc": href = `/editdoc/${item.id}`; break;
+        case "table": href = `/edittable/${item.id}`; break;
+        case "mindmap": href = `/editmindmap/${item.id}`; break;
+        case "presentation": href = `/editpresentation/${item.id}`; break;
+      }
+
+      const bgColor = info?.bg || "#1e293b";
+      const linkHtml = `<p><a href="${href}" target="_blank" rel="noopener noreferrer" contenteditable="false" style="display:inline-flex;align-items:center;gap:6px;background:${bgColor};border:1px solid #334155;border-radius:8px;padding:8px 14px;color:#60a5fa;text-decoration:none;font-size:14px;font-weight:500;cursor:pointer;">${badgeHtml}${item.title}</a></p>`;
+
+      handleAddAtEnd();
+      setTimeout(() => {
+        const allBlocks = document.querySelectorAll('.block-editor-content');
+        const lastBlock = allBlocks[allBlocks.length - 1];
+        if (lastBlock) {
+          lastBlock.innerHTML = linkHtml;
+          saveRef.current();
+        }
+      }, 100);
+    };
+    window.addEventListener("doc-insert-link", handler);
+    return () => window.removeEventListener("doc-insert-link", handler);
+  }, [handleAddAtEnd]);
+
   // Listen for chatbot insert events
   useEffect(() => {
     const handler = (e: Event) => {

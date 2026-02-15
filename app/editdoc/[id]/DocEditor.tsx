@@ -7,7 +7,7 @@ import type { Tag } from "@/features/mydrive/types";
 import DocHeader from "@/features/doc/components/DocHeader";
 import DocRibbon from "@/features/doc/components/DocRibbon";
 import BlockManager from "@/features/doc/components/BlockManager";
-import FileSearchModal from "@/components/FileSearchModal";
+import FileSearchModal, { getEditUrl, type SearchResult } from "@/components/FileSearchModal";
 
 interface DocEditorProps {
   allTags: Tag[];
@@ -76,9 +76,13 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
     scheduleAutoSave(title, html, observation);
   };
 
+  const handleInsertDocLink = (item: SearchResult) => {
+    window.dispatchEvent(new CustomEvent("doc-insert-link", { detail: item }));
+  };
+
   return (
     <div className="flex flex-col h-dvh w-full overflow-hidden bg-neutral-950">
-      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} />
+      <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} onInsert={handleInsertDocLink} />
       <DocHeader title={title} observation={observation} status={status} onTitleChange={handleTitleChange} onObservationChange={handleObservationChange} />
       <DocRibbon tocOpen={tocOpen} setTocOpen={setTocOpen} />
       
