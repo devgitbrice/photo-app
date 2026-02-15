@@ -17,7 +17,7 @@ export async function updateDriveItemAction(id: string, updates: Record<string, 
     throw new Error("Erreur lors de la mise à jour");
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
 }
 
 /**
@@ -61,7 +61,7 @@ export async function replaceImageAction(id: string, imagePath: string, imageDat
     if (updateError) console.error("Erreur update URL:", updateError);
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
   return { success: true, newUrl };
 }
 
@@ -91,7 +91,7 @@ export async function createTagAction(name: string) {
     throw new Error("Erreur lors de la création du tag");
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
   return data;
 }
 
@@ -104,7 +104,7 @@ export async function addTagToItemAction(mydriveId: string, tagId: string) {
     console.error("Erreur ajout tag:", error);
     throw new Error("Erreur lors de l'ajout du tag");
   }
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
 }
 
 export async function removeTagFromItemAction(mydriveId: string, tagId: string) {
@@ -118,7 +118,7 @@ export async function removeTagFromItemAction(mydriveId: string, tagId: string) 
     console.error("Erreur suppression tag:", error);
     throw new Error("Erreur lors de la suppression du tag");
   }
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
 }
 
 /**
@@ -134,7 +134,7 @@ export async function updateDriveContentAction(id: string, content: string) {
     console.error("Erreur update content:", error);
     throw new Error("Erreur lors de la mise à jour du contenu");
   }
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
 }
 
 /**
@@ -155,7 +155,7 @@ export async function deleteDriveItemAction(id: string, imagePath: string) {
     throw new Error("Erreur lors de la suppression de l'entrée");
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
 }
 
 /**
@@ -185,7 +185,7 @@ export async function createMindmapAction(input: {
     throw new Error(`Erreur Supabase: ${error.message}`);
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
   return { success: true, id: data.id };
 }
 
@@ -235,6 +235,6 @@ export async function createPythonScriptAction(input: {
     }
   }
 
-  revalidatePath("/app/mydrive");
+  revalidatePath("/mydrive");
   return { success: true, id: data.id };
 }
