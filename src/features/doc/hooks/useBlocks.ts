@@ -82,6 +82,30 @@ export function useBlocks(initialHtml: string, onTriggerSave: () => void) {
     setTimeout(onTriggerSave, 100);
   }, [onTriggerSave]);
 
+  const handleMoveToTop = useCallback((id: string) => {
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id);
+      if (idx <= 0) return prev;
+      const arr = [...prev];
+      const [block] = arr.splice(idx, 1);
+      arr.unshift(block);
+      return arr;
+    });
+    setTimeout(onTriggerSave, 100);
+  }, [onTriggerSave]);
+
+  const handleMoveToBottom = useCallback((id: string) => {
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id);
+      if (idx === -1 || idx === prev.length - 1) return prev;
+      const arr = [...prev];
+      const [block] = arr.splice(idx, 1);
+      arr.push(block);
+      return arr;
+    });
+    setTimeout(onTriggerSave, 100);
+  }, [onTriggerSave]);
+
   const handleSplit = useCallback((id: string, beforeHtml: string, afterHtml: string) => {
     setBlocks(prev => {
       const idx = prev.findIndex(b => b.id === id);
@@ -98,5 +122,5 @@ export function useBlocks(initialHtml: string, onTriggerSave: () => void) {
     setTimeout(onTriggerSave, 100);
   }, [onTriggerSave]);
 
-  return { blocks, focusedBlockId, setFocusedBlockId, htmlRefs, handleHtmlChange, handleFocusChange, handleAddBelow, handleAddAtEnd, handleMoveUp, handleMoveDown, handleSplit };
+  return { blocks, focusedBlockId, setFocusedBlockId, htmlRefs, handleHtmlChange, handleFocusChange, handleAddBelow, handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit };
 }

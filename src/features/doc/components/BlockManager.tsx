@@ -20,7 +20,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
   const {
     blocks, focusedBlockId, setFocusedBlockId, htmlRefs,
     handleHtmlChange, handleFocusChange, handleAddBelow,
-    handleAddAtEnd, handleMoveUp, handleMoveDown, handleSplit
+    handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit
   } = useBlocks(initialHtml, () => saveRef.current());
 
   const updateTocAndSave = useCallback(() => {
@@ -127,15 +127,17 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
       <div className="flex-1 overflow-y-auto w-full min-w-0">
         <div className="max-w-4xl mx-auto p-6 pb-32 w-full">
           {blocks.map((block) => (
-            <SingleBlock 
-              key={block.id} 
-              block={block} 
-              onHtmlChange={handleHtmlChange} 
-              onAddBelow={handleAddBelow} 
-              onFocusBlock={setFocusedBlockId} 
-              onMoveUp={handleMoveUp} 
-              onMoveDown={handleMoveDown} 
-              onSplit={handleSplit} 
+            <SingleBlock
+              key={block.id}
+              block={block}
+              onHtmlChange={handleHtmlChange}
+              onAddBelow={handleAddBelow}
+              onFocusBlock={setFocusedBlockId}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onMoveToTop={handleMoveToTop}
+              onMoveToBottom={handleMoveToBottom}
+              onSplit={handleSplit}
             />
           ))}
           <div className="mt-8 flex justify-center opacity-50 hover:opacity-100 transition-opacity">
