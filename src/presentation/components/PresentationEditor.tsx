@@ -12,7 +12,7 @@ import BroadcastMode from "./BroadcastMode";
 import NanoBananaPanel from "./NanoBananaPanel";
 import FileSearchModal, { getEditUrl, type SearchResult } from "@/components/FileSearchModal";
 import type { Tag } from "@/features/mydrive/types";
-import type { Slide, SlideElement, PresentationStyles } from "../types";
+import type { Slide, SlideElement, PresentationStyles, SlideCategory } from "../types";
 import { parsePresentationData, createDefaultSlide, DEFAULT_PRESENTATION_STYLES } from "../types";
 
 interface PresentationEditorProps {
@@ -47,6 +47,11 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
   const [nightMode, setNightMode] = useState(false);
   const [nanoBananaOpen, setNanoBananaOpen] = useState(false);
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
+
+  const [slideCategories, setSlideCategories] = useState<SlideCategory[]>(
+    initialPData?.slideCategories || []
+  );
+  const [filterCategory, setFilterCategory] = useState<string>("all");
 
   const [selectedTags, setSelectedTags] = useState<Tag[]>(initialData?.tags || []);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -166,7 +171,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
     savingRef.current = true;
     setStatus("saving");
     try {
-      const content = JSON.stringify({ slides, styles: presentationStyles });
+      const content = JSON.stringify({ slides, styles: presentationStyles, slideCategories });
       if (docId) {
         await updateDriveItemAction(docId, { title: docTitle.trim(), content, observation: description });
       } else {
@@ -183,7 +188,7 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
       savingRef.current = false;
       setStatus("idle");
     }
-  }, [docId, docTitle, slides, presentationStyles, description, selectedTags]);
+  }, [docId, docTitle, slides, presentationStyles, slideCategories, description, selectedTags]);
 
   const scheduleAutoSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -196,14 +201,14 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
 
   useEffect(() => {
     if (docTitle.trim()) scheduleAutoSave();
-  }, [slides, docTitle, description, presentationStyles, scheduleAutoSave]);
+  }, [slides, docTitle, description, presentationStyles, slideCategories, scheduleAutoSave]);
 
   const handleSave = async () => {
     if (!docTitle.trim()) return alert("Le titre est requis");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setStatus("saving");
     try {
-      const content = JSON.stringify({ slides, styles: presentationStyles });
+      const content = JSON.stringify({ slides, styles: presentationStyles, slideCategories });
       if (docId) {
         await updateDriveItemAction(docId, { title: docTitle.trim(), content, observation: description });
       } else {
@@ -335,6 +340,10 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
           slides={slides} setSlides={setSlides}
           currentIndex={currentIndex} setCurrentIndex={setCurrentIndex}
           nightMode={nightMode}
+          slideCategories={slideCategories}
+          setSlideCategories={setSlideCategories}
+          filterCategory={filterCategory}
+          setFilterCategory={setFilterCategory}
         />
         <SlideCanvas
           slide={currentSlide}
