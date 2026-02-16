@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 
 type Message = {
   id: string;
@@ -157,13 +158,17 @@ export default function ChatBot() {
                 className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap ${
+                  className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
                     msg.role === "user"
-                      ? "bg-blue-600 text-white rounded-br-md"
-                      : "bg-neutral-800 text-neutral-200 rounded-bl-md"
+                      ? "bg-blue-600 text-white rounded-br-md whitespace-pre-wrap"
+                      : "bg-neutral-800 text-neutral-200 rounded-bl-md prose prose-invert prose-sm prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-1.5 prose-pre:my-1 prose-code:text-blue-300 max-w-none"
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === "user" ? (
+                    msg.text
+                  ) : (
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  )}
                 </div>
                 {/* Insert button for bot messages */}
                 {msg.role === "bot" && msg.id !== "welcome" && (
