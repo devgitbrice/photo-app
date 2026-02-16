@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useCallback, memo } from "react";
-import { Search, Plus, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Mic, MicOff, Loader2, Volume2, Square } from "lucide-react";
+import React, { useRef, useEffect, useCallback, memo, useState } from "react";
+import { Search, Plus, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Mic, MicOff, Loader2, Volume2, Square, X, Copy } from "lucide-react";
 import { DocBlock } from "../types";
 import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 import { useTTS } from "@/hooks/useTTS";
@@ -14,6 +14,7 @@ interface SingleBlockProps {
   onMoveToTop?: (id: string) => void;
   onMoveToBottom?: (id: string) => void;
   onSplit?: (id: string, beforeHtml: string, afterHtml: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 /** Remove injected copy buttons from HTML before saving */
@@ -25,7 +26,7 @@ function stripCopyButtons(html: string): string {
 }
 
 export const SingleBlock = memo(function SingleBlock({
-  block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onMoveToTop, onMoveToBottom, onSplit
+  block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onMoveToTop, onMoveToBottom, onSplit, onDelete
 }: SingleBlockProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const { state: ttsState, speak, stopPlayback } = useTTS();
@@ -47,7 +48,17 @@ export const SingleBlock = memo(function SingleBlock({
     onHtmlChange(block.id, html);
   }, [block.id, onHtmlChange]);
 
+  const [copied, setCopied] = useState(false);
   const { state: dictState, toggle: toggleDictation } = useVoiceDictation(handleDictationTranscript);
+
+  const handleCopyBlock = useCallback(() => {
+    const text = editorRef.current?.textContent?.trim() || "";
+    if (text) {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, []);
 
   /** Inject copy buttons into <pre> elements */
   const injectCopyButtons = useCallback(() => {
@@ -159,6 +170,8 @@ export const SingleBlock = memo(function SingleBlock({
     <div className="group relative w-full my-2 rounded-lg border border-transparent hover:border-neutral-700 transition-colors p-3">
       <div className="absolute -left-10 top-3 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
         <button onClick={() => onFocusBlock(block.id)} title="Mode focus" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><Search size={16} /></button>
+        <button onClick={handleCopyBlock} title={copied ? "Copié !" : "Copier le contenu"} className={`p-1.5 rounded-md transition-all ${copied ? "bg-green-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}><Copy size={16} /></button>
+        <button onClick={() => onDelete?.(block.id)} title="Supprimer le bloc" className="p-1.5 bg-neutral-800 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-md transition-all"><X size={16} /></button>
         <button onClick={() => onMoveToTop?.(block.id)} title="Déplacer tout en haut" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ChevronsUp size={16} /></button>
         <button onClick={() => onMoveUp?.(block.id)} title="Déplacer vers le haut" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowUp size={16} /></button>
         <button onClick={() => onMoveDown?.(block.id)} title="Déplacer vers le bas" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowDown size={16} /></button>
