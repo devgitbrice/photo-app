@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchMyDrive, fetchAllTags } from "@/features/mydrive/lib/fetchMyDrive";
 import MyDriveGallery from "@/features/mydrive/components/MyDriveGallery";
+import CreateVoyageButton from "@/features/voyage/components/CreateVoyageButton";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function MyDrivePage() {
           <Link href="/newpresentation" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors">
             Créer Présentation
           </Link>
+          <CreateVoyageButton />
           <Link href="/" className="rounded-2xl px-4 py-2 text-sm font-semibold border hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">
             Ajouter
           </Link>

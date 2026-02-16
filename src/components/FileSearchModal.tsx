@@ -16,6 +16,7 @@ const DOC_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   mindmap: { label: "Mindmap", color: "text-purple-400" },
   table: { label: "Table", color: "text-green-400" },
   presentation: { label: "Présentation", color: "text-orange-400" },
+  voyage: { label: "Voyage", color: "text-sky-400" },
 };
 
 export function getEditUrl(item: SearchResult): string {
@@ -25,6 +26,7 @@ export function getEditUrl(item: SearchResult): string {
     case "table": return `/edittable/${item.id}`;
     case "mindmap": return `/editmindmap/${item.id}`;
     case "presentation": return `/editpresentation/${item.id}`;
+    case "voyage": return `/editvoyage/${item.id}`;
     default: return `/mydrive`;
   }
 }
