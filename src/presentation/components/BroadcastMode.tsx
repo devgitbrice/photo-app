@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  Play, Square, Volume2, Loader2, RotateCcw,
+} from "lucide-react";
 import type { Slide, SlideElement, MindmapNode } from "../types";
 import { ICON_MAP } from "./IconMap";
 import ShapeSVG from "./ShapeSVG";
+import { useTTS } from "@/hooks/useTTS";
 
 type Props = {
   slides: Slide[];
@@ -18,11 +22,40 @@ type Props = {
 const DESIGN_W = 896;
 const DESIGN_H = 504;
 
+type ReadMode = "off" | "play" | "auto" | "superauto";
+
+/** Extract all text content from a slide's elements */
+function getSlideText(slide: Slide): string {
+  return slide.elements
+    .filter((el) => el.type === "text" || el.type === "shape")
+    .map((el) => el.content || "")
+    .filter((t) => t.trim())
+    .join(". ");
+}
+
 export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesChange, nightMode }: Props) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [editingId, setEditingId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+
+  // Slide thumbnail sidebar
+  const [showThumbnails, setShowThumbnails] = useState(false);
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
+
+  // TTS reading
+  const { state: ttsState, speak, stopPlayback } = useTTS();
+  const [readMode, setReadMode] = useState<ReadMode>("off");
+  const readModeRef = useRef<ReadMode>("off");
+  const currentIndexRef = useRef(currentIndex);
+
+  // Keep refs in sync
+  useEffect(() => {
+    readModeRef.current = readMode;
+  }, [readMode]);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   const slide = slides[currentIndex];
 
@@ -31,14 +64,15 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
     const updateScale = () => {
       if (!containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
-      const sw = clientWidth / DESIGN_W;
+      // Account for thumbnail sidebar width if shown
+      const sw = (clientWidth - (showThumbnails ? 160 : 0)) / DESIGN_W;
       const sh = clientHeight / DESIGN_H;
       setScale(Math.min(sw, sh));
     };
     updateScale();
     window.addEventListener("resize", updateScale);
     return () => window.removeEventListener("resize", updateScale);
-  }, []);
+  }, [showThumbnails]);
 
   const goNext = useCallback(() => {
     if (currentIndex < slides.length - 1) {
@@ -53,6 +87,76 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
       setCurrentIndex((i) => i - 1);
     }
   }, [currentIndex]);
+
+  // ─── TTS Reading Logic ──────────────────────────────────────
+  const readCurrentSlide = useCallback(async () => {
+    const text = getSlideText(slides[currentIndexRef.current]);
+    if (!text.trim()) {
+      // No text to read, handle auto modes
+      if (readModeRef.current === "superauto") {
+        if (currentIndexRef.current < slides.length - 1) {
+          setCurrentIndex((i) => i + 1);
+        } else {
+          setReadMode("off");
+        }
+      }
+      return;
+    }
+    await speak(text, "Kore");
+  }, [slides, speak]);
+
+  // Auto mode: read when slide changes
+  useEffect(() => {
+    if (readMode === "auto" || readMode === "superauto") {
+      readCurrentSlide();
+    }
+  }, [currentIndex, readMode, readCurrentSlide]);
+
+  // Super Auto mode: auto-advance after TTS finishes
+  useEffect(() => {
+    if (readModeRef.current === "superauto" && ttsState === "idle") {
+      // After playback ends, advance to next slide
+      const timer = setTimeout(() => {
+        if (readModeRef.current !== "superauto") return;
+        if (currentIndexRef.current < slides.length - 1) {
+          setCurrentIndex((i) => i + 1);
+        } else {
+          setReadMode("off");
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [ttsState, slides.length]);
+
+  const handlePlay = () => {
+    if (readMode !== "off") {
+      stopPlayback();
+      setReadMode("off");
+      return;
+    }
+    setReadMode("play");
+    readCurrentSlide();
+  };
+
+  const handleAuto = () => {
+    if (readMode === "auto") {
+      stopPlayback();
+      setReadMode("off");
+      return;
+    }
+    stopPlayback();
+    setReadMode("auto");
+  };
+
+  const handleSuperAuto = () => {
+    if (readMode === "superauto") {
+      stopPlayback();
+      setReadMode("off");
+      return;
+    }
+    stopPlayback();
+    setReadMode("superauto");
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -72,13 +176,47 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
         e.preventDefault();
         goPrev();
       }
-      if (e.key === "Escape" || e.key === "Enter") {
-        onClose();
+      // Up/Down arrow keys: show thumbnails and navigate
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setShowThumbnails(true);
+        goPrev();
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setShowThumbnails(true);
+        goNext();
+      }
+      if (e.key === "Escape") {
+        if (showThumbnails) {
+          setShowThumbnails(false);
+        } else {
+          stopPlayback();
+          setReadMode("off");
+          onClose();
+        }
+      }
+      if (e.key === "Enter") {
+        if (showThumbnails) {
+          setShowThumbnails(false);
+        } else {
+          stopPlayback();
+          setReadMode("off");
+          onClose();
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editingId, goNext, goPrev, onClose]);
+  }, [editingId, goNext, goPrev, onClose, showThumbnails, stopPlayback]);
+
+  // Scroll active thumbnail into view
+  useEffect(() => {
+    if (showThumbnails && thumbnailsRef.current) {
+      const active = thumbnailsRef.current.querySelector(`[data-slide-idx="${currentIndex}"]`);
+      active?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [currentIndex, showThumbnails]);
 
   const updateElement = (id: string, updates: Partial<SlideElement>) => {
     const newSlides = slides.map((s, i) => {
@@ -347,7 +485,7 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
 
     // ─── Mindmap (read-only in broadcast) ───────────────────
     if (el.type === "mindmap") {
-      const root = el.mindmapData || { id: "root", label: "Idée centrale", children: [] };
+      const root = el.mindmapData || { id: "root", label: "Idee centrale", children: [] };
       const colors = ["#ea580c", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899"];
       const allElements: React.ReactNode[] = [];
       const allLines: React.ReactNode[] = [];
@@ -448,49 +586,196 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
         <span className="text-white/60 text-sm">
           {currentIndex + 1} / {slides.length}
         </span>
-        <button
-          onClick={onClose}
-          className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10"
-          title="Quitter (Echap)"
-        >
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* TTS Reading buttons */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handlePlay(); }}
+            title={readMode === "play" ? "Arreter la lecture" : "Play - Lire la slide actuelle"}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+              readMode === "play"
+                ? "bg-green-600 text-white"
+                : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+            }`}
+          >
+            {ttsState === "loading" && readMode === "play" ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : readMode === "play" ? (
+              <Square size={12} />
+            ) : (
+              <Play size={12} />
+            )}
+            Play
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleAuto(); }}
+            title={readMode === "auto" ? "Desactiver la lecture auto" : "Auto - Lit a chaque changement de slide"}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+              readMode === "auto"
+                ? "bg-blue-600 text-white"
+                : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+            }`}
+          >
+            {ttsState === "loading" && readMode === "auto" ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Volume2 size={12} />
+            )}
+            Auto
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSuperAuto(); }}
+            title={readMode === "superauto" ? "Arreter Super Auto" : "Super Auto - Lit et passe a la slide suivante automatiquement"}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+              readMode === "superauto"
+                ? "bg-orange-600 text-white animate-pulse"
+                : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+            }`}
+          >
+            {ttsState === "loading" && readMode === "superauto" ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RotateCcw size={12} />
+            )}
+            Super Auto
+          </button>
+
+          <span className="w-px h-4 bg-white/20 mx-1" />
+
+          {/* Toggle thumbnails button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowThumbnails(!showThumbnails); }}
+            title={showThumbnails ? "Masquer les miniatures" : "Afficher les miniatures (fleches haut/bas)"}
+            className={`p-1 rounded-lg text-xs transition-all ${
+              showThumbnails
+                ? "bg-white/20 text-white"
+                : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+            }`}
+          >
+            {showThumbnails ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+          </button>
+
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10"
+            title="Quitter (Echap)"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
-      {/* Slide area */}
-      <div ref={containerRef} className="flex-1 flex items-center justify-center p-4">
-        <div
-          className="relative overflow-hidden rounded shadow-2xl"
-          style={{
-            width: DESIGN_W,
-            height: DESIGN_H,
-            backgroundColor: slide.backgroundColor || "#ffffff",
-            transform: `scale(${scale})`,
-            transformOrigin: "center center",
-            filter: nightMode ? "invert(1)" : "none",
-          }}
-        >
-          {[...slide.elements]
-            .sort((a, b) => a.zIndex - b.zIndex)
-            .map((el) => (
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Slide thumbnails sidebar (left) */}
+        {showThumbnails && (
+          <div
+            ref={thumbnailsRef}
+            className="w-40 bg-black/80 border-r border-white/10 overflow-y-auto py-12 px-2 space-y-2 flex-shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {slides.map((s, idx) => (
               <div
-                key={el.id}
-                style={{
-                  position: "absolute",
-                  left: `${el.x}%`,
-                  top: `${el.y}%`,
-                  width: `${el.width}%`,
-                  height: `${el.height}%`,
-                  zIndex: el.zIndex,
-                  transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
-                  opacity: el.style.opacity ?? 1,
-                  borderRadius: el.style.borderRadius || 0,
-                }}
-                onClick={(e) => e.stopPropagation()}
+                key={s.id}
+                data-slide-idx={idx}
+                onClick={() => { setEditingId(null); setCurrentIndex(idx); }}
+                className={`cursor-pointer relative aspect-video w-full rounded border-2 transition-all overflow-hidden ${
+                  idx === currentIndex
+                    ? "border-orange-500"
+                    : "border-white/20 hover:border-white/40"
+                }`}
               >
-                {renderElement(el)}
+                {/* Slide number */}
+                <span className="absolute left-1 top-0.5 text-[9px] font-bold text-white/60 z-10">
+                  {idx + 1}
+                </span>
+                {/* Mini preview */}
+                <div
+                  className="w-full h-full relative"
+                  style={{
+                    backgroundColor: s.backgroundColor || "#ffffff",
+                    filter: nightMode ? "invert(1)" : "none",
+                  }}
+                >
+                  {s.elements
+                    .sort((a, b) => a.zIndex - b.zIndex)
+                    .map((el) => (
+                      <div
+                        key={el.id}
+                        className="absolute overflow-hidden"
+                        style={{
+                          left: `${el.x}%`,
+                          top: `${el.y}%`,
+                          width: `${el.width}%`,
+                          height: `${el.height}%`,
+                        }}
+                      >
+                        {el.type === "text" && (
+                          <div
+                            className="w-full h-full overflow-hidden"
+                            style={{
+                              fontSize: Math.max(2, (el.style.fontSize || 18) * 0.08),
+                              fontWeight: el.style.fontWeight || "normal",
+                              color: el.style.color || "#333",
+                              textAlign: el.style.textAlign || "left",
+                              lineHeight: 1.1,
+                            }}
+                          >
+                            {el.content?.substring(0, 30)}
+                          </div>
+                        )}
+                        {el.type === "image" && (
+                          <img src={el.src} alt="" className="w-full h-full object-contain" draggable={false} />
+                        )}
+                        {el.type === "shape" && (
+                          <div className="w-full h-full" style={{ backgroundColor: el.style.fill || "#3b82f6", borderRadius: el.shapeType === "circle" ? "50%" : 0 }} />
+                        )}
+                      </div>
+                    ))}
+                </div>
+                {/* Current indicator */}
+                {idx === currentIndex && (
+                  <div className="absolute inset-0 border-2 border-orange-500 rounded pointer-events-none" />
+                )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Slide area */}
+        <div ref={containerRef} className="flex-1 flex items-center justify-center p-4">
+          <div
+            className="relative overflow-hidden rounded shadow-2xl"
+            style={{
+              width: DESIGN_W,
+              height: DESIGN_H,
+              backgroundColor: slide.backgroundColor || "#ffffff",
+              transform: `scale(${scale})`,
+              transformOrigin: "center center",
+              filter: nightMode ? "invert(1)" : "none",
+            }}
+          >
+            {[...slide.elements]
+              .sort((a, b) => a.zIndex - b.zIndex)
+              .map((el) => (
+                <div
+                  key={el.id}
+                  style={{
+                    position: "absolute",
+                    left: `${el.x}%`,
+                    top: `${el.y}%`,
+                    width: `${el.width}%`,
+                    height: `${el.height}%`,
+                    zIndex: el.zIndex,
+                    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                    opacity: el.style.opacity ?? 1,
+                    borderRadius: el.style.borderRadius || 0,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {renderElement(el)}
+                </div>
+              ))}
+          </div>
         </div>
       </div>
 
@@ -498,7 +783,7 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
       {currentIndex > 0 && (
         <button
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
+          className={`absolute ${showThumbnails ? "left-44" : "left-4"} top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all`}
         >
           <ChevronLeft size={32} />
         </button>
@@ -519,6 +804,17 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
           style={{ width: `${((currentIndex + 1) / slides.length) * 100}%` }}
         />
       </div>
+
+      {/* TTS state indicator */}
+      {ttsState !== "idle" && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 text-white/80 text-xs">
+          {ttsState === "loading" ? (
+            <><Loader2 size={12} className="animate-spin" /> Chargement audio...</>
+          ) : (
+            <><Volume2 size={12} className="animate-pulse" /> Lecture en cours...</>
+          )}
+        </div>
+      )}
     </div>
   );
 }

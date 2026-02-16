@@ -75,6 +75,22 @@ export default function TableGrid({ data, setData }: TableGridProps) {
     return () => window.removeEventListener("table-insert-link", handler);
   }, [activeCell, data, setData]);
 
+  // Listen for voice dictation events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail?.text;
+      if (!text) return;
+      const r = activeCell?.r ?? 0;
+      const c = activeCell?.c ?? 0;
+      const newData = data.map((row) => [...row]);
+      newData[r][c] = text;
+      setData(newData);
+      setActiveCell({ r, c });
+    };
+    window.addEventListener("table-dictation", handler);
+    return () => window.removeEventListener("table-dictation", handler);
+  }, [activeCell, data, setData]);
+
   const startEdit = useCallback(
     (r: number, c: number, initialValue?: string) => {
       const val = initialValue !== undefined ? initialValue : data[r][c] || "";

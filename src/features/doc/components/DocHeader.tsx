@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import DocExportMenu from "@/components/DocExportMenu";
 
 interface DocHeaderProps {
   title: string;
@@ -7,6 +8,7 @@ interface DocHeaderProps {
   status: "idle" | "saving" | "saved";
   onTitleChange: (val: string) => void;
   onObservationChange: (val: string) => void;
+  getContent?: () => string;
 }
 
 export default function DocHeader({
@@ -15,6 +17,7 @@ export default function DocHeader({
   status,
   onTitleChange,
   onObservationChange,
+  getContent,
 }: DocHeaderProps) {
   return (
     <div className="flex flex-col shrink-0">
@@ -38,6 +41,10 @@ export default function DocHeader({
         }`}>
           {status === "saving" ? "Sauvegarde..." : status === "saved" ? "Enregistré" : "Auto-save"}
         </span>
+
+        {getContent && (
+          <DocExportMenu title={title} getContent={getContent} />
+        )}
       </div>
 
       <div className="bg-neutral-900/50 border-b border-neutral-800 px-4 py-2">

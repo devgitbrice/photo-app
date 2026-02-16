@@ -132,6 +132,10 @@ export default function TableEditor({ initialData }: TableEditorProps) {
         title={title} setTitle={setTitle}
         description={description} setDescription={setDescription}
         onSave={handleSave} status={status}
+        onDictationText={(text) => {
+          // Insert dictated text into the active cell via custom event
+          window.dispatchEvent(new CustomEvent("table-dictation", { detail: { text } }));
+        }}
       />
 
       <div className="flex-1 relative bg-black min-h-0">
