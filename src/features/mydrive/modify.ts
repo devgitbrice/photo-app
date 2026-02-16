@@ -223,6 +223,7 @@ export async function createVoyageAction(title: string) {
       image_path: "",
       image_url: "",
       doc_type: "voyage",
+      type: "file",
     })
     .select("id")
     .single();
@@ -232,7 +233,6 @@ export async function createVoyageAction(title: string) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/mydrive");
   return { success: true, id: data.id };
 }
 
