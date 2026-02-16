@@ -216,21 +216,20 @@ export async function searchDriveItemsAction(query: string) {
 export async function createVoyageAction(title: string) {
   const { data, error } = await supabase
     .from("MyDrive")
-    .insert([
-      {
-        title,
-        content: JSON.stringify({ trajets: [], logements: [] }),
-        observation: "",
-        doc_type: "voyage",
-        type: "file",
-      },
-    ])
-    .select()
+    .insert({
+      title,
+      content: JSON.stringify({ trajets: [], logements: [] }),
+      observation: "",
+      image_path: "",
+      image_url: "",
+      doc_type: "voyage",
+    })
+    .select("id")
     .single();
 
   if (error) {
-    console.error("ERREUR CRÉATION VOYAGE (Supabase):", error.message, error.details);
-    throw new Error(`Erreur Supabase: ${error.message}`);
+    console.error("ERREUR CRÉATION VOYAGE (Supabase):", error.message, error.details, error.hint);
+    throw new Error(error.message);
   }
 
   revalidatePath("/mydrive");

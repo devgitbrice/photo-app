@@ -19,9 +19,9 @@ export default function CreateVoyageButton() {
       setOpen(false);
       setTitle("");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la creation du voyage.");
+    } catch (err: any) {
+      console.error("Erreur creation voyage:", err);
+      alert("Erreur: " + (err?.message || "Erreur inconnue lors de la creation du voyage."));
     } finally {
       setLoading(false);
     }
