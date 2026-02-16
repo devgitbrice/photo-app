@@ -16,6 +16,10 @@ export default function CreateVoyageButton() {
     setLoading(true);
     try {
       const result = await createVoyageAction(trimmed);
+      if (!result.success) {
+        alert("Erreur Supabase: " + result.error);
+        return;
+      }
       setOpen(false);
       setTitle("");
       router.push(`/editvoyage/${result.id}`);
