@@ -111,6 +111,14 @@ export default function PresentationEditor({ initialData }: PresentationEditorPr
         setSlides(newSlides);
         setCurrentIndex(currentIndex + 1);
       }
+      // Cmd+N: Add new slide
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        const newSlides = [...slides];
+        newSlides.splice(currentIndex + 1, 0, createDefaultSlide());
+        setSlides(newSlides);
+        setCurrentIndex(currentIndex + 1);
+      }
       // Backspace / Delete: Delete current slide
       if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
