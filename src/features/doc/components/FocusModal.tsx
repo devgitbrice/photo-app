@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
+import { List, ListOrdered, Volume2, Square, Loader2 } from "lucide-react";
 import { DocBlock } from "../types";
+import { useTTS } from "@/hooks/useTTS";
 
 interface FocusModalProps {
   block: DocBlock;
@@ -15,8 +17,34 @@ function stripCopyButtons(html: string): string {
   return div.innerHTML;
 }
 
+const TEXT_COLORS = [
+  { label: "Blanc", value: "#ffffff" },
+  { label: "Rouge", value: "#ef4444" },
+  { label: "Orange", value: "#f97316" },
+  { label: "Jaune", value: "#eab308" },
+  { label: "Vert", value: "#22c55e" },
+  { label: "Bleu", value: "#3b82f6" },
+  { label: "Violet", value: "#a855f7" },
+  { label: "Rose", value: "#ec4899" },
+];
+
 export default function FocusModal({ block, onChange, onClose }: FocusModalProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const { state: ttsState, speak, stopPlayback } = useTTS();
+
+  // Floating toolbar state
+  const [floatingToolbar, setFloatingToolbar] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false });
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const floatingRef = useRef<HTMLDivElement>(null);
+
+  const handleSpeak = useCallback(() => {
+    if (ttsState === "playing" || ttsState === "loading") {
+      stopPlayback();
+      return;
+    }
+    const text = editorRef.current?.textContent?.trim() || "";
+    if (text) speak(text);
+  }, [ttsState, speak, stopPlayback]);
 
   /** Inject copy buttons into <pre> elements */
   const injectCopyButtons = useCallback(() => {
@@ -77,6 +105,31 @@ export default function FocusModal({ block, onChange, onClose }: FocusModalProps
     injectCopyButtons();
   }, []);
 
+  // Floating toolbar: show on text selection
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        // Small delay to allow clicking toolbar buttons
+        setTimeout(() => {
+          const sel2 = window.getSelection();
+          if (!sel2 || sel2.isCollapsed) {
+            setFloatingToolbar(prev => ({ ...prev, visible: false }));
+            setShowColorPicker(false);
+          }
+        }, 200);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      // Only show if selection is inside the editor
+      if (!editorRef.current?.contains(range.commonAncestorContainer)) return;
+      const rect = range.getBoundingClientRect();
+      setFloatingToolbar({ x: rect.left + rect.width / 2, y: rect.top - 10, visible: true });
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, []);
+
   const linkifyNode = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
       const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+|[a-zA-Z0-9.-]+\.[a-z]{2,10}[^\s<]*)/gi;
@@ -116,13 +169,66 @@ export default function FocusModal({ block, onChange, onClose }: FocusModalProps
     }
   };
 
+  // Formatting commands
+  const execCmd = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    handleInput();
+  };
+
+  const handleInsertList = (ordered: boolean) => {
+    editorRef.current?.focus();
+    document.execCommand(ordered ? "insertOrderedList" : "insertUnorderedList", false);
+    handleInput();
+  };
+
+  const handleTextColor = (color: string) => {
+    execCmd("foreColor", color);
+    setShowColorPicker(false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="w-full max-w-4xl bg-neutral-900 border border-neutral-700 rounded-xl p-8 shadow-2xl overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
         <div className="mb-4 flex justify-between items-center border-b border-neutral-800 pb-3">
           <span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Mode Focus</span>
           <button onClick={onClose} className="text-xs text-neutral-400 hover:text-white px-2 py-1 bg-neutral-800 rounded transition-colors">Échap pour quitter</button>
         </div>
+
+        {/* Toolbar */}
+        <div className="mb-4 flex items-center gap-2 border-b border-neutral-800 pb-3">
+          <button
+            onClick={() => handleInsertList(false)}
+            title="Liste à puces"
+            className="p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors"
+          >
+            <List size={18} />
+          </button>
+          <button
+            onClick={() => handleInsertList(true)}
+            title="Liste numérotée"
+            className="p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors"
+          >
+            <ListOrdered size={18} />
+          </button>
+          <div className="w-px h-6 bg-neutral-700 mx-1" />
+          <button
+            onClick={handleSpeak}
+            title={ttsState === "playing" ? "Arrêter la lecture" : "Écouter le contenu"}
+            className={`p-2 rounded-md transition-all ${
+              ttsState === "playing"
+                ? "bg-green-600 text-white animate-pulse"
+                : ttsState === "loading"
+                ? "bg-yellow-600 text-white"
+                : "bg-neutral-800 text-neutral-400 hover:text-white"
+            }`}
+          >
+            {ttsState === "loading" ? <Loader2 size={18} className="animate-spin" /> : ttsState === "playing" ? <Square size={16} /> : <Volume2 size={18} />}
+          </button>
+        </div>
+
+        {/* Editor */}
         <div
           ref={editorRef} contentEditable suppressContentEditableWarning
           onInput={handleInput}
@@ -130,11 +236,76 @@ export default function FocusModal({ block, onChange, onClose }: FocusModalProps
           className="w-full text-white text-lg leading-relaxed outline-none min-h-[50vh]
             [&_a]:text-blue-400 [&_a]:underline
             [&_h1]:text-4xl [&_h1]:font-bold [&_p]:mb-4
+            [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul_li]:mb-1
+            [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_ol_li]:mb-1
             [&_pre]:bg-[#1e1e2e] [&_pre]:border [&_pre]:border-neutral-700 [&_pre]:border-l-4 [&_pre]:border-l-blue-500
             [&_pre]:p-4 [&_pre]:pl-5 [&_pre]:rounded-lg [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed
             [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30 [&_pre]:my-3 [&_pre]:overflow-x-auto"
         />
       </div>
+
+      {/* Floating selection toolbar */}
+      {floatingToolbar.visible && (
+        <div
+          ref={floatingRef}
+          onMouseDown={(e) => e.preventDefault()}
+          className="fixed z-[100] flex items-center gap-1 bg-neutral-800 border border-neutral-600 rounded-lg shadow-2xl px-2 py-1.5 animate-in fade-in duration-150"
+          style={{
+            left: `${floatingToolbar.x}px`,
+            top: `${floatingToolbar.y}px`,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          <button
+            onClick={() => execCmd("bold")}
+            title="Gras"
+            className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors font-bold text-sm"
+          >
+            G
+          </button>
+          <button
+            onClick={() => execCmd("italic")}
+            title="Italique"
+            className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors italic text-sm"
+          >
+            I
+          </button>
+          <button
+            onClick={() => execCmd("underline")}
+            title="Souligné"
+            className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors underline text-sm"
+          >
+            S
+          </button>
+          <div className="w-px h-5 bg-neutral-600 mx-0.5" />
+          <div className="relative">
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              title="Couleur du texte"
+              className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors text-sm flex items-center gap-1"
+            >
+              A
+              <span className="w-3 h-3 rounded-sm bg-gradient-to-r from-red-500 via-green-500 to-blue-500" />
+            </button>
+            {showColorPicker && (
+              <div
+                onMouseDown={(e) => e.preventDefault()}
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-neutral-800 border border-neutral-600 rounded-lg shadow-2xl p-2 grid grid-cols-4 gap-1.5 min-w-[120px]"
+              >
+                {TEXT_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => handleTextColor(c.value)}
+                    title={c.label}
+                    className="w-6 h-6 rounded-full border border-neutral-600 hover:border-white transition-colors hover:scale-110"
+                    style={{ backgroundColor: c.value }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

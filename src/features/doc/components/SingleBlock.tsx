@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useCallback, memo } from "react";
-import { Search, Plus, ArrowUp, ArrowDown, Mic, MicOff, Loader2 } from "lucide-react";
+import { Search, Plus, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Mic, MicOff, Loader2, Volume2, Square } from "lucide-react";
 import { DocBlock } from "../types";
 import { useVoiceDictation } from "@/hooks/useVoiceDictation";
+import { useTTS } from "@/hooks/useTTS";
 
 interface SingleBlockProps {
   block: DocBlock;
@@ -10,6 +11,8 @@ interface SingleBlockProps {
   onFocusBlock: (id: string) => void;
   onMoveUp?: (id: string) => void;
   onMoveDown?: (id: string) => void;
+  onMoveToTop?: (id: string) => void;
+  onMoveToBottom?: (id: string) => void;
   onSplit?: (id: string, beforeHtml: string, afterHtml: string) => void;
 }
 
@@ -22,9 +25,19 @@ function stripCopyButtons(html: string): string {
 }
 
 export const SingleBlock = memo(function SingleBlock({
-  block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onSplit
+  block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onMoveToTop, onMoveToBottom, onSplit
 }: SingleBlockProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const { state: ttsState, speak, stopPlayback } = useTTS();
+
+  const handleSpeak = useCallback(() => {
+    if (ttsState === "playing" || ttsState === "loading") {
+      stopPlayback();
+      return;
+    }
+    const text = editorRef.current?.textContent?.trim() || "";
+    if (text) speak(text);
+  }, [ttsState, speak, stopPlayback]);
 
   const handleDictationTranscript = useCallback((text: string) => {
     if (!editorRef.current) return;
@@ -145,12 +158,14 @@ export const SingleBlock = memo(function SingleBlock({
   return (
     <div className="group relative w-full my-2 rounded-lg border border-transparent hover:border-neutral-700 transition-colors p-3">
       <div className="absolute -left-10 top-3 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-        <button onClick={() => onFocusBlock(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><Search size={16} /></button>
-        <button onClick={() => onMoveUp?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowUp size={16} /></button>
-        <button onClick={() => onMoveDown?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowDown size={16} /></button>
+        <button onClick={() => onFocusBlock(block.id)} title="Mode focus" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><Search size={16} /></button>
+        <button onClick={() => onMoveToTop?.(block.id)} title="Déplacer tout en haut" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ChevronsUp size={16} /></button>
+        <button onClick={() => onMoveUp?.(block.id)} title="Déplacer vers le haut" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowUp size={16} /></button>
+        <button onClick={() => onMoveDown?.(block.id)} title="Déplacer vers le bas" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowDown size={16} /></button>
+        <button onClick={() => onMoveToBottom?.(block.id)} title="Déplacer tout en bas" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ChevronsDown size={16} /></button>
         <button
           onClick={toggleDictation}
-          title={dictState === "recording" ? "Arreter la dictee" : "Dictee vocale"}
+          title={dictState === "recording" ? "Arrêter la dictée" : "Dictée vocale"}
           className={`p-1.5 rounded-md transition-all ${
             dictState === "recording"
               ? "bg-red-600 text-white animate-pulse"
@@ -161,6 +176,19 @@ export const SingleBlock = memo(function SingleBlock({
         >
           {dictState === "connecting" ? <Loader2 size={16} className="animate-spin" /> : dictState === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
         </button>
+        <button
+          onClick={handleSpeak}
+          title={ttsState === "playing" ? "Arrêter la lecture" : "Écouter le contenu"}
+          className={`p-1.5 rounded-md transition-all ${
+            ttsState === "playing"
+              ? "bg-green-600 text-white animate-pulse"
+              : ttsState === "loading"
+              ? "bg-yellow-600 text-white"
+              : "bg-neutral-800 text-neutral-400 hover:text-white"
+          }`}
+        >
+          {ttsState === "loading" ? <Loader2 size={16} className="animate-spin" /> : ttsState === "playing" ? <Square size={14} /> : <Volume2 size={16} />}
+        </button>
       </div>
       <div
         ref={editorRef} contentEditable suppressContentEditableWarning
@@ -168,6 +196,8 @@ export const SingleBlock = memo(function SingleBlock({
         onBlur={handleBlur} onKeyDown={handleKeyDown}
         className="block-editor-content w-full text-white outline-none min-h-[1.5rem] whitespace-pre-wrap
           [&_h1]:text-3xl [&_h1]:font-bold [&_p]:mb-3
+          [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ul_li]:mb-1
+          [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_ol_li]:mb-1
           [&_pre]:bg-[#1e1e2e] [&_pre]:border [&_pre]:border-neutral-700 [&_pre]:border-l-4 [&_pre]:border-l-blue-500
           [&_pre]:p-4 [&_pre]:pl-5 [&_pre]:rounded-lg [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed
           [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30 [&_pre]:my-3 [&_pre]:overflow-x-auto"
