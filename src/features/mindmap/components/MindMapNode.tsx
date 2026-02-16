@@ -2,7 +2,9 @@
 
 import { Handle, Position, NodeProps } from "reactflow";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 
 export interface NodeLink {
   id: string;
@@ -56,6 +58,14 @@ export default function MindMapNode({ data, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Voice dictation for this node
+  const { state: dictState, toggle: toggleDictation } = useVoiceDictation(
+    (text) => {
+      setLabel(text);
+      data.label = text;
+    }
+  );
 
   // Link search state
   const [showSearch, setShowSearch] = useState(false);
@@ -233,7 +243,7 @@ export default function MindMapNode({ data, selected }: NodeProps) {
           setIsEditing(true);
         }}
         className={`
-          px-4 py-2 rounded-lg border shadow-lg relative
+          group px-4 py-2 rounded-lg border shadow-lg relative
           min-w-[150px] h-[50px] flex items-center justify-center transition-all duration-200
           ${
             selected
@@ -270,6 +280,25 @@ export default function MindMapNode({ data, selected }: NodeProps) {
             {label}
           </span>
         )}
+
+        {/* Dictation button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleDictation();
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          title={dictState === "recording" ? "Arreter la dictee" : "Dictee vocale"}
+          className={`absolute -right-2 -top-2 p-1 rounded-full transition-all z-10 ${
+            dictState === "recording"
+              ? "bg-red-600 text-white animate-pulse"
+              : dictState === "connecting"
+              ? "bg-yellow-600 text-white"
+              : "bg-neutral-700 text-neutral-400 hover:text-white opacity-0 group-hover:opacity-100"
+          } ${dictState !== "idle" ? "opacity-100" : ""}`}
+        >
+          {dictState === "connecting" ? <Loader2 size={10} className="animate-spin" /> : dictState === "recording" ? <MicOff size={10} /> : <Mic size={10} />}
+        </button>
 
         {/* Handle droite */}
         <Handle

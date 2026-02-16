@@ -8,12 +8,14 @@ import {
   Palette, ChevronDown, RotateCcw,
   HardDrive, Search, Banana,
   GitBranch, Code2,
+  Mic, MicOff, Loader2,
 } from "lucide-react";
 import type { Slide, SlideElement, ElementStyle, ShapeType, PresentationStyles } from "../types";
 import {
   TEXT_PRESETS, AVAILABLE_SHAPES, AVAILABLE_ICONS, TEXT_EFFECTS, FONT_FAMILIES, CODE_LANGUAGES,
 } from "../types";
 import { ICON_MAP } from "./IconMap";
+import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 
 type Props = {
   slide: Slide;
@@ -31,6 +33,21 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedEl = slide.elements.find((e) => e.id === selectedId);
+
+  // Voice dictation for text elements
+  const { state: dictState, toggle: toggleDictation } = useVoiceDictation((text) => {
+    if (!selectedId) return;
+    const el = slide.elements.find((e) => e.id === selectedId);
+    if (el && (el.type === "text" || el.type === "shape")) {
+      const existing = el.content || "";
+      updateSlide({
+        ...slide,
+        elements: slide.elements.map((e) =>
+          e.id === selectedId ? { ...e, content: existing + text } : e
+        ),
+      });
+    }
+  });
 
   // ─── Helpers ────────────────────────────────────────────────
   const addElement = (el: SlideElement) => {
@@ -355,6 +372,24 @@ export default function PresentationToolbar({ slide, updateSlide, selectedId, se
             </div>
           </Dropdown>
         </div>
+
+        {/* Voice dictation button */}
+        <button
+          onClick={toggleDictation}
+          title={dictState === "recording" ? "Arreter la dictee" : "Dictee vocale (Gemini)"}
+          disabled={!selectedEl || (selectedEl.type !== "text" && selectedEl.type !== "shape")}
+          className={`p-1.5 rounded transition-all ${
+            dictState === "recording"
+              ? "bg-red-600 text-white animate-pulse"
+              : dictState === "connecting"
+              ? "bg-yellow-600 text-white"
+              : selectedEl && (selectedEl.type === "text" || selectedEl.type === "shape")
+              ? "hover:bg-neutral-700 text-neutral-300"
+              : "text-neutral-600 cursor-not-allowed"
+          }`}
+        >
+          {dictState === "connecting" ? <Loader2 size={16} className="animate-spin" /> : dictState === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
+        </button>
       </div>
 
       {/* ─── Format section (when element selected) ──────── */}

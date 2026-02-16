@@ -83,7 +83,7 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
   return (
     <div className="flex flex-col h-dvh w-full overflow-hidden bg-neutral-950">
       <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} onInsert={handleInsertDocLink} />
-      <DocHeader title={title} observation={observation} status={status} onTitleChange={handleTitleChange} onObservationChange={handleObservationChange} />
+      <DocHeader title={title} observation={observation} status={status} onTitleChange={handleTitleChange} onObservationChange={handleObservationChange} getContent={() => contentRef.current} />
       <DocRibbon tocOpen={tocOpen} setTocOpen={setTocOpen} />
       
       {/* Le composant est posé directement, la div buggée a disparu ! */}

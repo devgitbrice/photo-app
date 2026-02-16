@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, memo } from "react";
-import { Search, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Plus, ArrowUp, ArrowDown, Mic, MicOff, Loader2 } from "lucide-react";
 import { DocBlock } from "../types";
+import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 
 interface SingleBlockProps {
   block: DocBlock;
@@ -24,6 +25,16 @@ export const SingleBlock = memo(function SingleBlock({
   block, onHtmlChange, onAddBelow, onFocusBlock, onMoveUp, onMoveDown, onSplit
 }: SingleBlockProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+
+  const handleDictationTranscript = useCallback((text: string) => {
+    if (!editorRef.current) return;
+    // Append the dictated text to the block content
+    const html = `<p>${text}</p>`;
+    editorRef.current.innerHTML = html;
+    onHtmlChange(block.id, html);
+  }, [block.id, onHtmlChange]);
+
+  const { state: dictState, toggle: toggleDictation } = useVoiceDictation(handleDictationTranscript);
 
   /** Inject copy buttons into <pre> elements */
   const injectCopyButtons = useCallback(() => {
@@ -137,6 +148,19 @@ export const SingleBlock = memo(function SingleBlock({
         <button onClick={() => onFocusBlock(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><Search size={16} /></button>
         <button onClick={() => onMoveUp?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowUp size={16} /></button>
         <button onClick={() => onMoveDown?.(block.id)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowDown size={16} /></button>
+        <button
+          onClick={toggleDictation}
+          title={dictState === "recording" ? "Arreter la dictee" : "Dictee vocale"}
+          className={`p-1.5 rounded-md transition-all ${
+            dictState === "recording"
+              ? "bg-red-600 text-white animate-pulse"
+              : dictState === "connecting"
+              ? "bg-yellow-600 text-white"
+              : "bg-neutral-800 text-neutral-400 hover:text-white"
+          }`}
+        >
+          {dictState === "connecting" ? <Loader2 size={16} className="animate-spin" /> : dictState === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
+        </button>
       </div>
       <div
         ref={editorRef} contentEditable suppressContentEditableWarning

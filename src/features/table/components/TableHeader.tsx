@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { Mic, MicOff, Loader2 } from "lucide-react";
+import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 
 type TableHeaderProps = {
   title: string;
@@ -7,6 +11,7 @@ type TableHeaderProps = {
   setDescription: (d: string) => void;
   onSave: () => void;
   status: "idle" | "saving";
+  onDictationText?: (text: string) => void;
 };
 
 export default function TableHeader({
@@ -16,7 +21,14 @@ export default function TableHeader({
   setDescription,
   onSave,
   status,
+  onDictationText,
 }: TableHeaderProps) {
+  const { state: dictState, toggle: toggleDictation } = useVoiceDictation(
+    (text) => {
+      if (onDictationText) onDictationText(text);
+    }
+  );
+
   return (
     <header className="border-b border-neutral-800 bg-neutral-900 p-4">
       <div className="flex items-start justify-between gap-4">
@@ -38,6 +50,32 @@ export default function TableHeader({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Voice dictation button */}
+          <button
+            onClick={toggleDictation}
+            title={
+              dictState === "recording"
+                ? "Arreter la dictee"
+                : "Dictee vocale - ecrit dans la cellule active"
+            }
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+              dictState === "recording"
+                ? "bg-red-600 text-white animate-pulse"
+                : dictState === "connecting"
+                ? "bg-yellow-600 text-white"
+                : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+            }`}
+          >
+            {dictState === "connecting" ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : dictState === "recording" ? (
+              <MicOff size={14} />
+            ) : (
+              <Mic size={14} />
+            )}
+            {dictState === "recording" ? "Arreter" : "Dicter"}
+          </button>
+
           <Link
             href="/mydrive"
             className="rounded-xl px-4 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
