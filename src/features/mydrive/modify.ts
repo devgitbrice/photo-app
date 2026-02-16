@@ -230,10 +230,10 @@ export async function createVoyageAction(title: string) {
 
   if (error) {
     console.error("ERREUR CRÉATION VOYAGE (Supabase):", error.message, error.details, error.hint);
-    throw new Error(error.message);
+    return { success: false as const, error: error.message };
   }
 
-  return { success: true, id: data.id };
+  return { success: true as const, id: data.id };
 }
 
 /**
