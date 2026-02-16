@@ -24,23 +24,17 @@ export default function PresentationSidebar({
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const dragNodeRef = useRef<HTMLDivElement | null>(null);
 
-  // Category popover state
-  const [categoryPopoverIndex, setCategoryPopoverIndex] = useState<number | null>(null);
+  // "+" new category input state — tracks which slide's "+" was clicked
+  const [addingCategoryForSlide, setAddingCategoryForSlide] = useState<number | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const newCatInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Close popover on outside click
+  // Auto-focus the input when it appears
   useEffect(() => {
-    if (categoryPopoverIndex === null) return;
-    const handler = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setCategoryPopoverIndex(null);
-        setNewCategoryName("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [categoryPopoverIndex]);
+    if (addingCategoryForSlide !== null && newCatInputRef.current) {
+      newCatInputRef.current.focus();
+    }
+  }, [addingCategoryForSlide]);
 
   // Filter slides by category
   const filteredEntries: { slide: Slide; realIndex: number }[] = slides
@@ -52,7 +46,6 @@ export default function PresentationSidebar({
 
   const addSlide = () => {
     const newSlide = createDefaultSlide();
-    // If filtering by a category, auto-assign that category to new slide
     if (filterCategory !== "all") {
       newSlide.categoryIds = [filterCategory];
     }
@@ -99,22 +92,20 @@ export default function PresentationSidebar({
     setSlides(newSlides);
   };
 
-  const addCategory = () => {
+  const addCategory = (forSlideIndex: number) => {
     const name = newCategoryName.trim();
     if (!name) return;
     if (slideCategories.some((c) => c.name.toLowerCase() === name.toLowerCase())) return;
     const newCat: SlideCategory = { id: crypto.randomUUID(), name };
     setSlideCategories([...slideCategories, newCat]);
+    // Auto-assign to the slide
+    toggleSlideCategory(forSlideIndex, newCat.id);
     setNewCategoryName("");
-    // Auto-check the new category on the current slide
-    if (categoryPopoverIndex !== null) {
-      toggleSlideCategory(categoryPopoverIndex, newCat.id);
-    }
+    setAddingCategoryForSlide(null);
   };
 
   const deleteCategory = (categoryId: string) => {
     setSlideCategories(slideCategories.filter((c) => c.id !== categoryId));
-    // Remove from all slides
     const newSlides = slides.map((s) => ({
       ...s,
       categoryIds: s.categoryIds?.filter((id) => id !== categoryId),
@@ -198,13 +189,15 @@ export default function PresentationSidebar({
       </div>
 
       {/* ─── Slide thumbnails ─────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredEntries.map(({ slide, realIndex }) => (
-          <div key={slide.id}>
+          <div key={slide.id} className="space-y-1">
             {/* Drop indicator line */}
             {dropTarget === realIndex && dragIndex !== null && dragIndex !== realIndex && (
               <div className="h-0.5 bg-orange-500 rounded-full mx-2 my-0.5" />
             )}
+
+            {/* Slide thumbnail */}
             <div
               ref={dragIndex === realIndex ? dragNodeRef : undefined}
               draggable
@@ -330,95 +323,73 @@ export default function PresentationSidebar({
               >
                 ⧉
               </button>
+            </div>
 
-              {/* Category button (bottom-right) */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCategoryPopoverIndex(categoryPopoverIndex === realIndex ? null : realIndex);
-                }}
-                className={`absolute -right-1 -bottom-1 h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white z-20 transition-colors ${
-                  slide.categoryIds && slide.categoryIds.length > 0
-                    ? "flex bg-orange-600 hover:bg-orange-500"
-                    : "hidden group-hover:flex bg-neutral-600 hover:bg-neutral-500"
-                }`}
-                title="Catégories"
-              >
-                {slide.categoryIds && slide.categoryIds.length > 0 ? slide.categoryIds.length : "☰"}
-              </button>
+            {/* ─── Category badges below the slide ────────────── */}
+            <div className="flex flex-wrap gap-1 px-0.5">
+              {slideCategories.map((cat) => {
+                const isActive = slide.categoryIds?.includes(cat.id) ?? false;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => toggleSlideCategory(realIndex, cat.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      if (confirm(`Supprimer la catégorie "${cat.name}" ?`)) {
+                        deleteCategory(cat.id);
+                      }
+                    }}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors truncate max-w-[70px] ${
+                      isActive
+                        ? "bg-orange-600 text-white"
+                        : "bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                    }`}
+                    title={isActive ? `Retirer "${cat.name}"` : `Ajouter "${cat.name}"`}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
 
-              {/* Category popover */}
-              {categoryPopoverIndex === realIndex && (
-                <div
-                  ref={popoverRef}
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute left-full bottom-0 ml-2 z-50 w-52 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl"
+              {/* "+" button to add new category */}
+              {addingCategoryForSlide === realIndex ? (
+                <input
+                  ref={newCatInputRef}
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCategory(realIndex);
+                    }
+                    if (e.key === "Escape") {
+                      setAddingCategoryForSlide(null);
+                      setNewCategoryName("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (newCategoryName.trim()) {
+                      addCategory(realIndex);
+                    } else {
+                      setAddingCategoryForSlide(null);
+                      setNewCategoryName("");
+                    }
+                  }}
+                  placeholder="Nom..."
+                  className="w-16 px-1.5 py-0.5 rounded text-[10px] bg-neutral-800 border border-orange-500 text-white outline-none placeholder:text-neutral-600"
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    setAddingCategoryForSlide(realIndex);
+                    setNewCategoryName("");
+                  }}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-orange-400 transition-colors"
+                  title="Nouvelle catégorie"
                 >
-                  <div className="p-2 border-b border-neutral-700">
-                    <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Catégories</span>
-                  </div>
-
-                  {slideCategories.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-neutral-500">Aucune catégorie</div>
-                  )}
-
-                  <div className="max-h-40 overflow-y-auto">
-                    {slideCategories.map((cat) => {
-                      const checked = slide.categoryIds?.includes(cat.id) ?? false;
-                      return (
-                        <label
-                          key={cat.id}
-                          className="flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-700/50 cursor-pointer group/cat"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleSlideCategory(realIndex, cat.id)}
-                            className="rounded border-neutral-600 text-orange-500 focus:ring-orange-500 focus:ring-offset-0 bg-neutral-700 w-3.5 h-3.5 cursor-pointer"
-                          />
-                          <span className="text-xs text-neutral-300 flex-1 truncate">{cat.name}</span>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              deleteCategory(cat.id);
-                            }}
-                            className="hidden group-hover/cat:block text-[10px] text-red-400 hover:text-red-300"
-                            title="Supprimer la catégorie"
-                          >
-                            ×
-                          </button>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  {/* Add new category */}
-                  <div className="p-2 border-t border-neutral-700">
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addCategory();
-                          }
-                        }}
-                        placeholder="Nouvelle catégorie..."
-                        className="flex-1 bg-neutral-700 border border-neutral-600 rounded px-2 py-1 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-orange-500"
-                      />
-                      <button
-                        onClick={addCategory}
-                        disabled={!newCategoryName.trim()}
-                        className="px-2 py-1 bg-orange-600 hover:bg-orange-500 disabled:bg-neutral-700 disabled:text-neutral-500 rounded text-xs font-bold text-white transition-colors"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  +
+                </button>
               )}
             </div>
           </div>
