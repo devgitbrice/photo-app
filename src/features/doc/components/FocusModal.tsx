@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { List, ListOrdered, Volume2, Square, Loader2 } from "lucide-react";
+import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { DocBlock } from "../types";
 import { useTTS } from "@/hooks/useTTS";
 
@@ -7,6 +7,10 @@ interface FocusModalProps {
   block: DocBlock;
   onChange: (id: string, html: string) => void;
   onClose: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 /** Remove injected copy buttons from HTML before saving */
@@ -28,7 +32,7 @@ const TEXT_COLORS = [
   { label: "Rose", value: "#ec4899" },
 ];
 
-export default function FocusModal({ block, onChange, onClose }: FocusModalProps) {
+export default function FocusModal({ block, onChange, onClose, onNext, onPrev, hasPrev, hasNext }: FocusModalProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const { state: ttsState, speak, stopPlayback } = useTTS();
 
@@ -89,10 +93,10 @@ export default function FocusModal({ block, onChange, onClose }: FocusModalProps
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, onPrev, onNext]);
 
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== block.html) {
+    if (editorRef.current) {
       editorRef.current.innerHTML = block.html || "<p><br></p>";
       const range = document.createRange();
       const sel = window.getSelection();
@@ -103,7 +107,7 @@ export default function FocusModal({ block, onChange, onClose }: FocusModalProps
       editorRef.current.focus();
     }
     injectCopyButtons();
-  }, []);
+  }, [block.id, injectCopyButtons]);
 
   // Floating toolbar: show on text selection
   useEffect(() => {
@@ -187,8 +191,38 @@ export default function FocusModal({ block, onChange, onClose }: FocusModalProps
     setShowColorPicker(false);
   };
 
+  const handleNav = useCallback((direction: "prev" | "next") => {
+    // Save current content before navigating
+    if (editorRef.current) {
+      const html = stripCopyButtons(editorRef.current.innerHTML);
+      onChange(block.id, html);
+    }
+    if (direction === "prev") onPrev?.();
+    else onNext?.();
+  }, [block.id, onChange, onPrev, onNext]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+      {/* Previous block arrow */}
+      {hasPrev && (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleNav("prev"); }}
+          title="Bloc précédent"
+          className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-neutral-500 hover:text-white hover:bg-neutral-800/80 rounded-full transition-all opacity-40 hover:opacity-100"
+        >
+          <ChevronLeft size={28} />
+        </button>
+      )}
+      {/* Next block arrow */}
+      {hasNext && (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleNav("next"); }}
+          title="Bloc suivant"
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-neutral-500 hover:text-white hover:bg-neutral-800/80 rounded-full transition-all opacity-40 hover:opacity-100"
+        >
+          <ChevronRight size={28} />
+        </button>
+      )}
       <div className="w-full max-w-4xl bg-neutral-900 border border-neutral-700 rounded-xl p-8 shadow-2xl overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="mb-4 flex justify-between items-center border-b border-neutral-800 pb-3">

@@ -113,7 +113,7 @@ export function useBlocks(initialHtml: string, onTriggerSave: () => void) {
       const arr = [...prev];
       arr[idx] = { ...arr[idx], html: ensureHtml(beforeHtml) };
       htmlRefs.current[id] = ensureHtml(beforeHtml);
-      
+
       const nb = { id: crypto.randomUUID(), html: ensureHtml(afterHtml) };
       htmlRefs.current[nb.id] = nb.html;
       arr.splice(idx + 1, 0, nb);
@@ -122,5 +122,33 @@ export function useBlocks(initialHtml: string, onTriggerSave: () => void) {
     setTimeout(onTriggerSave, 100);
   }, [onTriggerSave]);
 
-  return { blocks, focusedBlockId, setFocusedBlockId, htmlRefs, handleHtmlChange, handleFocusChange, handleAddBelow, handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit };
+  const handleDelete = useCallback((id: string) => {
+    setBlocks(prev => {
+      if (prev.length <= 1) return prev; // Keep at least one block
+      const arr = prev.filter(b => b.id !== id);
+      delete htmlRefs.current[id];
+      return arr;
+    });
+    setTimeout(onTriggerSave, 100);
+  }, [onTriggerSave]);
+
+  const handleFocusNext = useCallback(() => {
+    setFocusedBlockId(prev => {
+      if (!prev) return prev;
+      const idx = blocks.findIndex(b => b.id === prev);
+      if (idx === -1 || idx >= blocks.length - 1) return prev;
+      return blocks[idx + 1].id;
+    });
+  }, [blocks]);
+
+  const handleFocusPrev = useCallback(() => {
+    setFocusedBlockId(prev => {
+      if (!prev) return prev;
+      const idx = blocks.findIndex(b => b.id === prev);
+      if (idx <= 0) return prev;
+      return blocks[idx - 1].id;
+    });
+  }, [blocks]);
+
+  return { blocks, focusedBlockId, setFocusedBlockId, htmlRefs, handleHtmlChange, handleFocusChange, handleAddBelow, handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit, handleDelete, handleFocusNext, handleFocusPrev };
 }

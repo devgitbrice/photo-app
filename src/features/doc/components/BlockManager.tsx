@@ -20,7 +20,8 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
   const {
     blocks, focusedBlockId, setFocusedBlockId, htmlRefs,
     handleHtmlChange, handleFocusChange, handleAddBelow,
-    handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit
+    handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit,
+    handleDelete, handleFocusNext, handleFocusPrev
   } = useBlocks(initialHtml, () => saveRef.current());
 
   const updateTocAndSave = useCallback(() => {
@@ -120,6 +121,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
   }, [handleAddAtEnd]);
 
   const focusedBlock = focusedBlockId ? { id: focusedBlockId, html: htmlRefs.current[focusedBlockId] || "" } : null;
+  const focusedIdx = focusedBlockId ? blocks.findIndex(b => b.id === focusedBlockId) : -1;
 
   return (
     <div className="flex-1 overflow-hidden flex bg-neutral-950 w-full min-w-0">
@@ -138,6 +140,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
               onMoveToTop={handleMoveToTop}
               onMoveToBottom={handleMoveToBottom}
               onSplit={handleSplit}
+              onDelete={handleDelete}
             />
           ))}
           <div className="mt-8 flex justify-center opacity-50 hover:opacity-100 transition-opacity">
@@ -147,7 +150,15 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
             </button>
           </div>
           {focusedBlock && (
-            <FocusModal block={focusedBlock} onChange={handleFocusChange} onClose={() => setFocusedBlockId(null)} />
+            <FocusModal
+              block={focusedBlock}
+              onChange={handleFocusChange}
+              onClose={() => setFocusedBlockId(null)}
+              onPrev={handleFocusPrev}
+              onNext={handleFocusNext}
+              hasPrev={focusedIdx > 0}
+              hasNext={focusedIdx < blocks.length - 1}
+            />
           )}
         </div>
       </div>
