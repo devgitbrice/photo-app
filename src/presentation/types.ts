@@ -82,11 +82,18 @@ export type SlideElement = {
   style: ElementStyle;
 };
 
+// ─── Slide Category ──────────────────────────────────────────────
+export type SlideCategory = {
+  id: string;
+  name: string;
+};
+
 // ─── Slide ────────────────────────────────────────────────────────
 export type Slide = {
   id: string;
   elements: SlideElement[];
   backgroundColor?: string;
+  categoryIds?: string[];
 };
 
 // ─── Old format (for migration) ──────────────────────────────────
@@ -173,6 +180,7 @@ export const DEFAULT_PRESENTATION_STYLES: PresentationStyles = {
 export type PresentationData = {
   slides: Slide[];
   styles: PresentationStyles;
+  slideCategories?: SlideCategory[];
 };
 
 export function parsePresentationData(content: string): PresentationData {
@@ -185,6 +193,7 @@ export function parsePresentationData(content: string): PresentationData {
       return {
         slides: (parsed.slides as unknown[]).map(migrateSlide),
         styles: parsed.styles || DEFAULT_PRESENTATION_STYLES,
+        slideCategories: parsed.slideCategories || [],
       };
     }
   } catch {}
