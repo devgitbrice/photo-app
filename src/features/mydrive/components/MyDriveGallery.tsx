@@ -90,6 +90,18 @@ const DOC_TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; text:
       </svg>
     ),
   },
+  voyage: {
+    label: "Voyage",
+    bg: "bg-sky-500/20",
+    text: "text-sky-400",
+    border: "border-sky-500/40",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l-7-7 3-3 4 4 8-8 3 3-11 11z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12z" />
+      </svg>
+    ),
+  },
 };
 
 // --- Mini-aperçu d'une slide de présentation ---
@@ -259,6 +271,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
     { key: "presentation", label: "Présentation", color: "orange" },
     { key: "scan", label: "PDF / Scan", color: "rose" },
     { key: "photo", label: "Photo", color: "cyan" },
+    { key: "voyage", label: "Voyage", color: "sky" },
   ];
 
   const docTypeCounts = useMemo(() => {
@@ -457,6 +470,7 @@ export default function MyDriveGallery({ items: initialItems, allTags: initialTa
       case "table": return `/edittable/${item.id}`;
       case "mindmap": return `/editmindmap/${item.id}`;
       case "presentation": return `/editpresentation/${item.id}`;
+      case "voyage": return `/editvoyage/${item.id}`;
       default: return null; // Les scans photo/PDF retournent null pour ouvrir l'overlay
     }
   };
