@@ -15,10 +15,10 @@ export default function CreateVoyageButton() {
     if (!trimmed) return;
     setLoading(true);
     try {
-      await createVoyageAction(trimmed);
+      const result = await createVoyageAction(trimmed);
       setOpen(false);
       setTitle("");
-      router.refresh();
+      router.push(`/editvoyage/${result.id}`);
     } catch (err: any) {
       console.error("Erreur creation voyage:", err);
       alert("Erreur: " + (err?.message || "Erreur inconnue lors de la creation du voyage."));
