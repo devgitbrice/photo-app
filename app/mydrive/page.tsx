@@ -11,7 +11,7 @@ export default async function MyDrivePage() {
   return (
     <main className="min-h-dvh p-6 space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">MyDrive</h1>
+        <h1 className="text-2xl font-semibold text-red-500">MyDrive</h1>
 
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/newdoc" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
