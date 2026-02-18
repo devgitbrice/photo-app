@@ -203,37 +203,41 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, []);
 
-  // Trackpad swipe navigation (horizontal wheel events)
+  // Trackpad swipe navigation (horizontal wheel events) — one swipe = one block
   useEffect(() => {
     let accumulatedDeltaX = 0;
-    let swipeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let locked = false;
+    let resetTimeout: ReturnType<typeof setTimeout> | null = null;
     const SWIPE_THRESHOLD = 80;
+    const LOCK_MS = 400;
 
     const handleWheel = (e: WheelEvent) => {
-      // Only handle horizontal swipes (trackpad gestures)
       if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-
-      // Prevent browser back/forward navigation
       e.preventDefault();
+      if (locked) return;
 
       accumulatedDeltaX += e.deltaX;
 
-      if (swipeTimeout) clearTimeout(swipeTimeout);
-      swipeTimeout = setTimeout(() => { accumulatedDeltaX = 0; }, 300);
+      if (resetTimeout) clearTimeout(resetTimeout);
+      resetTimeout = setTimeout(() => { accumulatedDeltaX = 0; }, 200);
 
       if (accumulatedDeltaX > SWIPE_THRESHOLD) {
+        locked = true;
         accumulatedDeltaX = 0;
         if (hasNext) handleNav("next");
+        setTimeout(() => { locked = false; }, LOCK_MS);
       } else if (accumulatedDeltaX < -SWIPE_THRESHOLD) {
+        locked = true;
         accumulatedDeltaX = 0;
         if (hasPrev) handleNav("prev");
+        setTimeout(() => { locked = false; }, LOCK_MS);
       }
     };
 
     window.addEventListener("wheel", handleWheel, { passive: false });
     return () => {
       window.removeEventListener("wheel", handleWheel);
-      if (swipeTimeout) clearTimeout(swipeTimeout);
+      if (resetTimeout) clearTimeout(resetTimeout);
     };
   }, [hasNext, hasPrev, handleNav]);
 
