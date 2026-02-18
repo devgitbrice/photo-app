@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight, Play, FastForward } from "lucide-react";
 import { DocBlock } from "../types";
 import { useTTS } from "@/hooks/useTTS";
+
+type AutoMode = "off" | "auto" | "superauto";
 
 interface FocusModalProps {
   block: DocBlock;
@@ -35,6 +37,12 @@ const TEXT_COLORS = [
 export default function FocusModal({ block, onChange, onClose, onNext, onPrev, hasPrev, hasNext }: FocusModalProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const { state: ttsState, speak, stopPlayback } = useTTS();
+  const [autoMode, setAutoMode] = useState<AutoMode>("off");
+  const autoModeRef = useRef<AutoMode>("off");
+  const isSpeakingRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
 
   // Floating toolbar state
   const [floatingToolbar, setFloatingToolbar] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false });
@@ -87,13 +95,45 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     });
   }, []);
 
+  const handleNav = useCallback((direction: "prev" | "next") => {
+    // Save current content before navigating
+    if (editorRef.current) {
+      const html = stripCopyButtons(editorRef.current.innerHTML);
+      onChange(block.id, html);
+    }
+    if (direction === "prev") onPrev?.();
+    else onNext?.();
+  }, [block.id, onChange, onPrev, onNext]);
+
+  const toggleAutoMode = useCallback((mode: AutoMode) => {
+    if (autoMode === mode) {
+      // Turn off
+      stopPlayback();
+      isSpeakingRef.current = false;
+      setAutoMode("off");
+    } else {
+      // Switch to this mode (stop current playback first)
+      stopPlayback();
+      isSpeakingRef.current = false;
+      setAutoMode(mode);
+    }
+  }, [autoMode, stopPlayback]);
+
+  // Stop auto mode when closing
+  const handleClose = useCallback(() => {
+    stopPlayback();
+    isSpeakingRef.current = false;
+    setAutoMode("off");
+    onClose();
+  }, [stopPlayback, onClose]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, onPrev, onNext]);
+  }, [handleClose]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -108,6 +148,35 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     }
     injectCopyButtons();
   }, [block.id, injectCopyButtons]);
+
+  // Auto-play TTS when block changes (AUTO & SUPER AUTO modes)
+  useEffect(() => {
+    if (autoModeRef.current === "off") return;
+    if (isSpeakingRef.current) return;
+
+    const text = (() => {
+      const div = document.createElement("div");
+      div.innerHTML = block.html || "";
+      return div.textContent?.trim() || "";
+    })();
+    if (!text) {
+      // Empty block in superauto: skip to next
+      if (autoModeRef.current === "superauto" && hasNext) {
+        setTimeout(() => onNext?.(), 300);
+      }
+      return;
+    }
+
+    isSpeakingRef.current = true;
+    speak(text).then(() => {
+      isSpeakingRef.current = false;
+      // SUPER AUTO: auto-advance to next block after playback ends
+      if (autoModeRef.current === "superauto" && hasNext) {
+        setTimeout(() => onNext?.(), 400);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.id, autoMode]);
 
   // Floating toolbar: show on text selection
   useEffect(() => {
@@ -133,6 +202,40 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     document.addEventListener("selectionchange", handleSelectionChange);
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, []);
+
+  // Trackpad swipe navigation (horizontal wheel events)
+  useEffect(() => {
+    let accumulatedDeltaX = 0;
+    let swipeTimeout: ReturnType<typeof setTimeout> | null = null;
+    const SWIPE_THRESHOLD = 80;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only handle horizontal swipes (trackpad gestures)
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+
+      // Prevent browser back/forward navigation
+      e.preventDefault();
+
+      accumulatedDeltaX += e.deltaX;
+
+      if (swipeTimeout) clearTimeout(swipeTimeout);
+      swipeTimeout = setTimeout(() => { accumulatedDeltaX = 0; }, 300);
+
+      if (accumulatedDeltaX > SWIPE_THRESHOLD) {
+        accumulatedDeltaX = 0;
+        if (hasNext) handleNav("next");
+      } else if (accumulatedDeltaX < -SWIPE_THRESHOLD) {
+        accumulatedDeltaX = 0;
+        if (hasPrev) handleNav("prev");
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      if (swipeTimeout) clearTimeout(swipeTimeout);
+    };
+  }, [hasNext, hasPrev, handleNav]);
 
   const linkifyNode = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -191,18 +294,8 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     setShowColorPicker(false);
   };
 
-  const handleNav = useCallback((direction: "prev" | "next") => {
-    // Save current content before navigating
-    if (editorRef.current) {
-      const html = stripCopyButtons(editorRef.current.innerHTML);
-      onChange(block.id, html);
-    }
-    if (direction === "prev") onPrev?.();
-    else onNext?.();
-  }, [block.id, onChange, onPrev, onNext]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={handleClose}>
       {/* Previous block arrow */}
       {hasPrev && (
         <button
@@ -226,8 +319,17 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
       <div className="w-full max-w-4xl bg-neutral-900 border border-neutral-700 rounded-xl p-8 shadow-2xl overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="mb-4 flex justify-between items-center border-b border-neutral-800 pb-3">
-          <span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Mode Focus</span>
-          <button onClick={onClose} className="text-xs text-neutral-400 hover:text-white px-2 py-1 bg-neutral-800 rounded transition-colors">Échap pour quitter</button>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Mode Focus</span>
+            {autoMode !== "off" && (
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse ${
+                autoMode === "superauto" ? "bg-orange-600/20 text-orange-400" : "bg-blue-600/20 text-blue-400"
+              }`}>
+                {autoMode === "superauto" ? "Super Auto" : "Auto"}
+              </span>
+            )}
+          </div>
+          <button onClick={handleClose} className="text-xs text-neutral-400 hover:text-white px-2 py-1 bg-neutral-800 rounded transition-colors">Échap pour quitter</button>
         </div>
 
         {/* Toolbar */}
@@ -259,6 +361,31 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
             }`}
           >
             {ttsState === "loading" ? <Loader2 size={18} className="animate-spin" /> : ttsState === "playing" ? <Square size={16} /> : <Volume2 size={18} />}
+          </button>
+          <div className="w-px h-6 bg-neutral-700 mx-1" />
+          <button
+            onClick={() => toggleAutoMode("auto")}
+            title={autoMode === "auto" ? "Désactiver Auto" : "Auto : lit chaque bloc affiché"}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all text-xs font-bold ${
+              autoMode === "auto"
+                ? "bg-blue-600 text-white ring-2 ring-blue-400/50"
+                : "bg-neutral-800 text-neutral-400 hover:text-white"
+            }`}
+          >
+            <Play size={14} />
+            AUTO
+          </button>
+          <button
+            onClick={() => toggleAutoMode("superauto")}
+            title={autoMode === "superauto" ? "Désactiver Super Auto" : "Super Auto : lit et passe au bloc suivant automatiquement"}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all text-xs font-bold ${
+              autoMode === "superauto"
+                ? "bg-orange-600 text-white ring-2 ring-orange-400/50 animate-pulse"
+                : "bg-neutral-800 text-neutral-400 hover:text-white"
+            }`}
+          >
+            <FastForward size={14} />
+            SUPER AUTO
           </button>
         </div>
 
