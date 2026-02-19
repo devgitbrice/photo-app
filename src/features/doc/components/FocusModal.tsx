@@ -3,6 +3,7 @@ import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight,
 import { DocBlock } from "../types";
 import { useTTS } from "@/hooks/useTTS";
 import { useThemeStore } from "@/store/themeStore";
+import { handleDocShortcut } from "../lib/docShortcuts";
 
 type AutoMode = "off" | "auto" | "superauto";
 
@@ -300,6 +301,12 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     setShowColorPicker(false);
   };
 
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (handleDocShortcut(e)) {
+      handleInput();
+    }
+  };
+
   const toolbarBtnClass = light
     ? "p-2 bg-neutral-200 text-neutral-600 hover:text-neutral-900 rounded-md transition-colors"
     : "p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors";
@@ -404,6 +411,7 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
           ref={editorRef} contentEditable suppressContentEditableWarning
           onInput={handleInput}
           onBlur={handleBlur}
+          onKeyDown={handleEditorKeyDown}
           className={`w-full text-lg leading-relaxed outline-none min-h-[50vh]
             [&_a]:text-blue-400 [&_a]:underline
             [&_h1]:text-4xl [&_h1]:font-bold [&_p]:mb-4
