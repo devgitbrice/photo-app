@@ -1,39 +1,55 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useTTSSettingsStore } from "@/store/ttsSettingsStore";
 
 type TTSState = "idle" | "loading" | "playing";
 
 export function useTTS() {
   const [state, setState] = useState<TTSState>("idle");
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const stopPlayback = useCallback(() => {
-    if (sourceRef.current) {
-      try {
-        sourceRef.current.stop();
-      } catch {
-        // already stopped
-      }
-      sourceRef.current = null;
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute("src");
+      audioRef.current = null;
     }
     setState("idle");
   }, []);
 
   const speak = useCallback(
-    async (text: string, voice?: string): Promise<void> => {
+    async (text: string): Promise<void> => {
       if (!text.trim()) return;
 
       // Stop any current playback
       stopPlayback();
       setState("loading");
 
+      const { voice, model, speed, responseFormat, instructions } =
+        useTTSSettingsStore.getState();
+
       try {
-        const res = await fetch("/api/tts", {
+        const controller = new AbortController();
+        abortRef.current = controller;
+
+        const res = await fetch("/api/tts-openai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice: voice || "Kore" }),
+          body: JSON.stringify({
+            text,
+            voice,
+            model,
+            speed,
+            response_format: responseFormat,
+            instructions: instructions || undefined,
+          }),
+          signal: controller.signal,
         });
 
         if (!res.ok) {
@@ -41,50 +57,39 @@ export function useTTS() {
           return;
         }
 
-        const data = await res.json();
-        if (!data.audio) {
-          setState("idle");
-          return;
-        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
 
-        // Decode base64 PCM audio
-        const raw = atob(data.audio);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) {
-          bytes[i] = raw.charCodeAt(i);
-        }
-
-        const int16 = new Int16Array(bytes.buffer);
-        const float32 = new Float32Array(int16.length);
-        for (let i = 0; i < int16.length; i++) {
-          float32[i] = int16[i] / 32768;
-        }
-
-        // Create AudioContext and play
-        if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-          audioCtxRef.current = new AudioContext({ sampleRate: 24000 });
-        }
-        const audioCtx = audioCtxRef.current;
-
-        const buffer = audioCtx.createBuffer(1, float32.length, 24000);
-        buffer.getChannelData(0).set(float32);
-
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        sourceRef.current = source;
+        const audio = new Audio(url);
+        audioRef.current = audio;
 
         setState("playing");
 
         return new Promise<void>((resolve) => {
-          source.onended = () => {
-            sourceRef.current = null;
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            audioRef.current = null;
             setState("idle");
             resolve();
           };
-          source.start();
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            audioRef.current = null;
+            setState("idle");
+            resolve();
+          };
+          audio.play().catch(() => {
+            URL.revokeObjectURL(url);
+            audioRef.current = null;
+            setState("idle");
+            resolve();
+          });
         });
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          // Cancelled by user
+          return;
+        }
         console.error("TTS error:", e);
         setState("idle");
       }

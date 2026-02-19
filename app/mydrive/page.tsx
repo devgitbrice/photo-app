@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Settings } from "lucide-react";
 import { fetchMyDrive, fetchAllTags } from "@/features/mydrive/lib/fetchMyDrive";
 import MyDriveGallery from "@/features/mydrive/components/MyDriveGallery";
 import CreateVoyageButton from "@/features/voyage/components/CreateVoyageButton";
@@ -11,7 +12,16 @@ export default async function MyDrivePage() {
   return (
     <main className="min-h-dvh p-6 space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-red-500">MyDrive</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-red-500">MyDrive</h1>
+          <Link
+            href="/settings"
+            title="Parametres"
+            className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors"
+          >
+            <Settings size={20} />
+          </Link>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/newdoc" className="rounded-2xl px-4 py-2 text-sm font-semibold border border-blue-600 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors">
