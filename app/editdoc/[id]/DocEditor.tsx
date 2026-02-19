@@ -8,6 +8,7 @@ import DocHeader from "@/features/doc/components/DocHeader";
 import DocRibbon from "@/features/doc/components/DocRibbon";
 import BlockManager from "@/features/doc/components/BlockManager";
 import FileSearchModal, { getEditUrl, type SearchResult } from "@/components/FileSearchModal";
+import { useThemeStore } from "@/store/themeStore";
 
 interface DocEditorProps {
   allTags: Tag[];
@@ -24,6 +25,8 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
   const [allTags, setAllTags] = useState<Tag[]>(initialAllTags);
   const [tocOpen, setTocOpen] = useState(true);
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
+  const light = theme === "light";
 
   const contentRef = useRef(initialData.content);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,15 +84,15 @@ export default function DocEditor({ allTags: initialAllTags, initialData }: DocE
   };
 
   return (
-    <div className="flex flex-col h-dvh w-full overflow-hidden bg-neutral-950">
+    <div className={`flex flex-col h-dvh w-full overflow-hidden ${light ? "bg-white" : "bg-neutral-950"}`}>
       <FileSearchModal open={fileSearchOpen} onClose={() => setFileSearchOpen(false)} onInsert={handleInsertDocLink} />
       <DocHeader title={title} observation={observation} status={status} onTitleChange={handleTitleChange} onObservationChange={handleObservationChange} getContent={() => contentRef.current} />
       <DocRibbon tocOpen={tocOpen} setTocOpen={setTocOpen} />
-      
+
       {/* Le composant est posé directement, la div buggée a disparu ! */}
       <BlockManager initialHtml={initialData.content} tocOpen={tocOpen} onChange={handleContentChange} />
 
-      <div className="bg-neutral-900 border-t border-neutral-800 p-3 shrink-0">
+      <div className={`${light ? "bg-neutral-100 border-neutral-300" : "bg-neutral-900 border-neutral-800"} border-t p-3 shrink-0`}>
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest shrink-0">Tags :</span>
           <div className="flex-1 overflow-x-auto">

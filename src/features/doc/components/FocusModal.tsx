@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight, Play, FastForward } from "lucide-react";
 import { DocBlock } from "../types";
 import { useTTS } from "@/hooks/useTTS";
+import { useThemeStore } from "@/store/themeStore";
 
 type AutoMode = "off" | "auto" | "superauto";
 
@@ -40,6 +41,7 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
   const [autoMode, setAutoMode] = useState<AutoMode>("off");
   const autoModeRef = useRef<AutoMode>("off");
   const isSpeakingRef = useRef(false);
+  const light = useThemeStore((s) => s.theme) === "light";
 
   // Keep ref in sync with state
   useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
@@ -298,14 +300,18 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     setShowColorPicker(false);
   };
 
+  const toolbarBtnClass = light
+    ? "p-2 bg-neutral-200 text-neutral-600 hover:text-neutral-900 rounded-md transition-colors"
+    : "p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={handleClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${light ? "bg-white/80" : "bg-black/80"} backdrop-blur-sm p-4`} onClick={handleClose}>
       {/* Previous block arrow */}
       {hasPrev && (
         <button
           onClick={(e) => { e.stopPropagation(); handleNav("prev"); }}
           title="Bloc précédent"
-          className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-neutral-500 hover:text-white hover:bg-neutral-800/80 rounded-full transition-all opacity-40 hover:opacity-100"
+          className={`absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all opacity-40 hover:opacity-100 ${light ? "text-neutral-400 hover:text-neutral-900 hover:bg-neutral-200/80" : "text-neutral-500 hover:text-white hover:bg-neutral-800/80"}`}
         >
           <ChevronLeft size={28} />
         </button>
@@ -315,14 +321,14 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
         <button
           onClick={(e) => { e.stopPropagation(); handleNav("next"); }}
           title="Bloc suivant"
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-neutral-500 hover:text-white hover:bg-neutral-800/80 rounded-full transition-all opacity-40 hover:opacity-100"
+          className={`absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all opacity-40 hover:opacity-100 ${light ? "text-neutral-400 hover:text-neutral-900 hover:bg-neutral-200/80" : "text-neutral-500 hover:text-white hover:bg-neutral-800/80"}`}
         >
           <ChevronRight size={28} />
         </button>
       )}
-      <div className="w-full max-w-4xl bg-neutral-900 border border-neutral-700 rounded-xl p-8 shadow-2xl overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+      <div className={`w-full max-w-4xl border rounded-xl p-8 shadow-2xl overflow-y-auto max-h-[85vh] ${light ? "bg-white border-neutral-300" : "bg-neutral-900 border-neutral-700"}`} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="mb-4 flex justify-between items-center border-b border-neutral-800 pb-3">
+        <div className={`mb-4 flex justify-between items-center border-b pb-3 ${light ? "border-neutral-300" : "border-neutral-800"}`}>
           <div className="flex items-center gap-3">
             <span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Mode Focus</span>
             {autoMode !== "off" && (
@@ -333,26 +339,26 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
               </span>
             )}
           </div>
-          <button onClick={handleClose} className="text-xs text-neutral-400 hover:text-white px-2 py-1 bg-neutral-800 rounded transition-colors">Échap pour quitter</button>
+          <button onClick={handleClose} className={`text-xs px-2 py-1 rounded transition-colors ${light ? "text-neutral-500 hover:text-neutral-900 bg-neutral-200" : "text-neutral-400 hover:text-white bg-neutral-800"}`}>Échap pour quitter</button>
         </div>
 
         {/* Toolbar */}
-        <div className="mb-4 flex items-center gap-2 border-b border-neutral-800 pb-3">
+        <div className={`mb-4 flex items-center gap-2 border-b pb-3 ${light ? "border-neutral-300" : "border-neutral-800"}`}>
           <button
             onClick={() => handleInsertList(false)}
             title="Liste à puces"
-            className="p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors"
+            className={toolbarBtnClass}
           >
             <List size={18} />
           </button>
           <button
             onClick={() => handleInsertList(true)}
             title="Liste numérotée"
-            className="p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors"
+            className={toolbarBtnClass}
           >
             <ListOrdered size={18} />
           </button>
-          <div className="w-px h-6 bg-neutral-700 mx-1" />
+          <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
           <button
             onClick={handleSpeak}
             title={ttsState === "playing" ? "Arrêter la lecture" : "Écouter le contenu"}
@@ -361,19 +367,19 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
                 ? "bg-green-600 text-white animate-pulse"
                 : ttsState === "loading"
                 ? "bg-yellow-600 text-white"
-                : "bg-neutral-800 text-neutral-400 hover:text-white"
+                : toolbarBtnClass
             }`}
           >
             {ttsState === "loading" ? <Loader2 size={18} className="animate-spin" /> : ttsState === "playing" ? <Square size={16} /> : <Volume2 size={18} />}
           </button>
-          <div className="w-px h-6 bg-neutral-700 mx-1" />
+          <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
           <button
             onClick={() => toggleAutoMode("auto")}
             title={autoMode === "auto" ? "Désactiver Auto" : "Auto : lit chaque bloc affiché"}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all text-xs font-bold ${
               autoMode === "auto"
                 ? "bg-blue-600 text-white ring-2 ring-blue-400/50"
-                : "bg-neutral-800 text-neutral-400 hover:text-white"
+                : light ? "bg-neutral-200 text-neutral-600 hover:text-neutral-900" : "bg-neutral-800 text-neutral-400 hover:text-white"
             }`}
           >
             <Play size={14} />
@@ -385,7 +391,7 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all text-xs font-bold ${
               autoMode === "superauto"
                 ? "bg-orange-600 text-white ring-2 ring-orange-400/50 animate-pulse"
-                : "bg-neutral-800 text-neutral-400 hover:text-white"
+                : light ? "bg-neutral-200 text-neutral-600 hover:text-neutral-900" : "bg-neutral-800 text-neutral-400 hover:text-white"
             }`}
           >
             <FastForward size={14} />
@@ -398,14 +404,18 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
           ref={editorRef} contentEditable suppressContentEditableWarning
           onInput={handleInput}
           onBlur={handleBlur}
-          className="w-full text-white text-lg leading-relaxed outline-none min-h-[50vh]
+          className={`w-full text-lg leading-relaxed outline-none min-h-[50vh]
             [&_a]:text-blue-400 [&_a]:underline
             [&_h1]:text-4xl [&_h1]:font-bold [&_p]:mb-4
             [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul_li]:mb-1
             [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_ol_li]:mb-1
-            [&_pre]:bg-[#1e1e2e] [&_pre]:border [&_pre]:border-neutral-700 [&_pre]:border-l-4 [&_pre]:border-l-blue-500
+            [&_pre]:border [&_pre]:border-l-4 [&_pre]:border-l-blue-500
             [&_pre]:p-4 [&_pre]:pl-5 [&_pre]:rounded-lg [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed
-            [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30 [&_pre]:my-3 [&_pre]:overflow-x-auto"
+            [&_pre]:my-3 [&_pre]:overflow-x-auto
+            ${light
+              ? "text-neutral-900 [&_pre]:bg-neutral-100 [&_pre]:border-neutral-300 [&_pre]:text-neutral-800 [&_pre]:shadow-sm"
+              : "text-white [&_pre]:bg-[#1e1e2e] [&_pre]:border-neutral-700 [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30"
+            }`}
         />
       </div>
 
@@ -414,7 +424,7 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
         <div
           ref={floatingRef}
           onMouseDown={(e) => e.preventDefault()}
-          className="fixed z-[100] flex items-center gap-1 bg-neutral-800 border border-neutral-600 rounded-lg shadow-2xl px-2 py-1.5 animate-in fade-in duration-150"
+          className={`fixed z-[100] flex items-center gap-1 border rounded-lg shadow-2xl px-2 py-1.5 animate-in fade-in duration-150 ${light ? "bg-white border-neutral-300" : "bg-neutral-800 border-neutral-600"}`}
           style={{
             left: `${floatingToolbar.x}px`,
             top: `${floatingToolbar.y}px`,
@@ -424,30 +434,30 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
           <button
             onClick={() => execCmd("bold")}
             title="Gras"
-            className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors font-bold text-sm"
+            className={`p-1.5 rounded transition-colors font-bold text-sm ${light ? "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200" : "text-neutral-300 hover:text-white hover:bg-neutral-700"}`}
           >
             G
           </button>
           <button
             onClick={() => execCmd("italic")}
             title="Italique"
-            className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors italic text-sm"
+            className={`p-1.5 rounded transition-colors italic text-sm ${light ? "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200" : "text-neutral-300 hover:text-white hover:bg-neutral-700"}`}
           >
             I
           </button>
           <button
             onClick={() => execCmd("underline")}
             title="Souligné"
-            className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors underline text-sm"
+            className={`p-1.5 rounded transition-colors underline text-sm ${light ? "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200" : "text-neutral-300 hover:text-white hover:bg-neutral-700"}`}
           >
             S
           </button>
-          <div className="w-px h-5 bg-neutral-600 mx-0.5" />
+          <div className={`w-px h-5 mx-0.5 ${light ? "bg-neutral-300" : "bg-neutral-600"}`} />
           <div className="relative">
             <button
               onClick={() => setShowColorPicker(!showColorPicker)}
               title="Couleur du texte"
-              className="p-1.5 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors text-sm flex items-center gap-1"
+              className={`p-1.5 rounded transition-colors text-sm flex items-center gap-1 ${light ? "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200" : "text-neutral-300 hover:text-white hover:bg-neutral-700"}`}
             >
               A
               <span className="w-3 h-3 rounded-sm bg-gradient-to-r from-red-500 via-green-500 to-blue-500" />
@@ -455,14 +465,14 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
             {showColorPicker && (
               <div
                 onMouseDown={(e) => e.preventDefault()}
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-neutral-800 border border-neutral-600 rounded-lg shadow-2xl p-2 grid grid-cols-4 gap-1.5 min-w-[120px]"
+                className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 border rounded-lg shadow-2xl p-2 grid grid-cols-4 gap-1.5 min-w-[120px] ${light ? "bg-white border-neutral-300" : "bg-neutral-800 border-neutral-600"}`}
               >
                 {TEXT_COLORS.map((c) => (
                   <button
                     key={c.value}
                     onClick={() => handleTextColor(c.value)}
                     title={c.label}
-                    className="w-6 h-6 rounded-full border border-neutral-600 hover:border-white transition-colors hover:scale-110"
+                    className={`w-6 h-6 rounded-full border hover:scale-110 transition-colors ${light ? "border-neutral-300 hover:border-neutral-900" : "border-neutral-600 hover:border-white"}`}
                     style={{ backgroundColor: c.value }}
                   />
                 ))}
