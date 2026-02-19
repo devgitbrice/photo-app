@@ -227,7 +227,7 @@ export const SingleBlock = memo(function SingleBlock({
           [&_pre]:my-3 [&_pre]:overflow-x-auto
           ${light
             ? "text-neutral-900 [&_pre]:bg-neutral-100 [&_pre]:border-neutral-300 [&_pre]:text-neutral-800 [&_pre]:shadow-sm"
-            : "text-white [&_pre]:bg-[#1e1e2e] [&_pre]:border-neutral-700 [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30"
+            : "dark-editor-override text-white [&_pre]:bg-[#1e1e2e] [&_pre]:border-neutral-700 [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30"
           }`}
       />
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 z-10">

@@ -30,3 +30,13 @@ body {
 a {
   @apply text-blue-500 hover:underline cursor-pointer;
 }
+
+/* Override inline text colors (from execCommand foreColor) in dark mode editor
+   so that dark-colored text saved in light mode stays readable on dark backgrounds.
+   Only affects rendering — saved HTML retains original colors. */
+.dark-editor-override font[color] {
+  color: inherit !important;
+}
+.dark-editor-override [style*="color"] {
+  color: inherit !important;
+}
