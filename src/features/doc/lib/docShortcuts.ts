@@ -24,7 +24,7 @@ export function handleDocShortcut(e: KeyboardEvent | React.KeyboardEvent): boole
 
   // Alt+Cmd + digit → headings (works on any keyboard layout via e.code)
   if (e.altKey) {
-    const code = (e as KeyboardEvent).code ?? (e.nativeEvent as KeyboardEvent)?.code;
+    const code = "code" in e ? (e as KeyboardEvent).code : undefined;
     if (code === "Digit1" || e.key === "&") {
       e.preventDefault();
       document.execCommand("formatBlock", false, "h1");
