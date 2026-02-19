@@ -26,7 +26,7 @@ export default async function EditDocPage({
   );
 
   return (
-    <main className="min-h-dvh bg-black text-white">
+    <main className="min-h-dvh bg-neutral-950 text-white">
       <DocEditor
         allTags={allTags}
         initialData={{
