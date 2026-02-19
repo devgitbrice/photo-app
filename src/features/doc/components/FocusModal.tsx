@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight, Play, FastForward } from "lucide-react";
+import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight, Play, FastForward, Copy, Check } from "lucide-react";
 import { DocBlock } from "../types";
 import { useTTS } from "@/hooks/useTTS";
 import { useThemeStore } from "@/store/themeStore";
@@ -50,6 +50,7 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
   // Floating toolbar state
   const [floatingToolbar, setFloatingToolbar] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false });
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [copied, setCopied] = useState(false);
   const floatingRef = useRef<HTMLDivElement>(null);
 
   const handleSpeak = useCallback(() => {
@@ -60,6 +61,19 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     const text = editorRef.current?.textContent?.trim() || "";
     if (text) speak(text);
   }, [ttsState, speak, stopPlayback]);
+
+  /** Copy block content with formatting (rich text) */
+  const handleCopyFormatted = useCallback(() => {
+    if (!editorRef.current) return;
+    const html = stripCopyButtons(editorRef.current.innerHTML);
+    const text = editorRef.current.textContent?.trim() || "";
+    const blob = new Blob([html], { type: "text/html" });
+    const textBlob = new Blob([text], { type: "text/plain" });
+    navigator.clipboard.write([new ClipboardItem({ "text/html": blob, "text/plain": textBlob })]).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
 
   /** Inject copy buttons into <pre> elements */
   const injectCopyButtons = useCallback(() => {
@@ -364,6 +378,19 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
             className={toolbarBtnClass}
           >
             <ListOrdered size={18} />
+          </button>
+          <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
+          <button
+            onClick={handleCopyFormatted}
+            title="Copier avec mise en forme"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all text-xs font-bold ${
+              copied
+                ? "bg-green-600 text-white"
+                : light ? "bg-neutral-200 text-neutral-600 hover:text-neutral-900" : "bg-neutral-800 text-neutral-400 hover:text-white"
+            }`}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? "Copié !" : "Copier"}
           </button>
           <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
           <button
