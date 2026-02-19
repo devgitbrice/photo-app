@@ -102,7 +102,7 @@ export default function BroadcastMode({ slides, initialIndex, onClose, onSlidesC
       }
       return;
     }
-    await speak(text, "Kore");
+    await speak(text);
   }, [slides, speak]);
 
   // Auto mode: read when slide changes
