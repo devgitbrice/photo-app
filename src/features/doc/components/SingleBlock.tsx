@@ -4,6 +4,7 @@ import { DocBlock } from "../types";
 import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 import { useTTS } from "@/hooks/useTTS";
 import { useThemeStore } from "@/store/themeStore";
+import { handleDocShortcut } from "../lib/docShortcuts";
 
 interface SingleBlockProps {
   block: DocBlock;
@@ -152,6 +153,10 @@ export const SingleBlock = memo(function SingleBlock({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (handleDocShortcut(e)) {
+      handleInput();
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && onSplit) {
       e.preventDefault();
       const sel = window.getSelection();
