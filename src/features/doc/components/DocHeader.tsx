@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import DocExportMenu from "@/components/DocExportMenu";
+import { useThemeStore } from "@/store/themeStore";
 
 interface DocHeaderProps {
   title: string;
@@ -19,10 +20,12 @@ export default function DocHeader({
   onObservationChange,
   getContent,
 }: DocHeaderProps) {
+  const light = useThemeStore((s) => s.theme) === "light";
+
   return (
     <div className="flex flex-col shrink-0">
-      <div className="bg-neutral-900 border-b border-neutral-800 p-3 flex items-center gap-3">
-        <Link href="/mydrive" className="text-neutral-400 hover:text-white transition-colors p-2 bg-neutral-800 rounded-lg shrink-0">
+      <div className={`${light ? "bg-neutral-100 border-neutral-300" : "bg-neutral-900 border-neutral-800"} border-b p-3 flex items-center gap-3`}>
+        <Link href="/mydrive" className={`transition-colors p-2 rounded-lg shrink-0 ${light ? "text-neutral-500 hover:text-neutral-900 bg-neutral-200" : "text-neutral-400 hover:text-white bg-neutral-800"}`}>
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
@@ -31,13 +34,13 @@ export default function DocHeader({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Titre du document..."
-          className="flex-1 bg-transparent text-xl font-bold text-white placeholder-neutral-600 outline-none"
+          className={`flex-1 bg-transparent text-xl font-bold outline-none ${light ? "text-neutral-900 placeholder-neutral-400" : "text-white placeholder-neutral-600"}`}
         />
 
         <span className={`text-xs px-2 py-1 rounded-full transition-all shrink-0 ${
           status === "saving" ? "bg-yellow-600/20 text-yellow-400" :
           status === "saved" ? "bg-green-600/20 text-green-400" :
-          "bg-neutral-800 text-neutral-500"
+          light ? "bg-neutral-200 text-neutral-500" : "bg-neutral-800 text-neutral-500"
         }`}>
           {status === "saving" ? "Sauvegarde..." : status === "saved" ? "Enregistré" : "Auto-save"}
         </span>
@@ -47,13 +50,13 @@ export default function DocHeader({
         )}
       </div>
 
-      <div className="bg-neutral-900/50 border-b border-neutral-800 px-4 py-2">
+      <div className={`${light ? "bg-neutral-50 border-neutral-300" : "bg-neutral-900/50 border-neutral-800"} border-b px-4 py-2`}>
         <input
           type="text"
           value={observation}
           onChange={(e) => onObservationChange(e.target.value)}
           placeholder="Description / observation..."
-          className="w-full bg-transparent text-sm text-neutral-400 placeholder-neutral-700 outline-none"
+          className={`w-full bg-transparent text-sm outline-none ${light ? "text-neutral-600 placeholder-neutral-400" : "text-neutral-400 placeholder-neutral-700"}`}
         />
       </div>
     </div>

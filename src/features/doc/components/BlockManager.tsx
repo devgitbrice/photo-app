@@ -5,6 +5,7 @@ import { SingleBlock } from "./SingleBlock";
 import FocusModal from "./FocusModal";
 import TocSidebar from "./TocSidebar";
 import { useBlocks, SEPARATOR } from "../hooks/useBlocks";
+import { useThemeStore } from "@/store/themeStore";
 
 interface BlockManagerProps {
   initialHtml: string;
@@ -16,6 +17,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
   const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
   const tocTimeout = useRef<NodeJS.Timeout | null>(null);
   const saveRef = useRef<() => void>(() => {});
+  const light = useThemeStore((s) => s.theme) === "light";
 
   const {
     blocks, focusedBlockId, setFocusedBlockId, htmlRefs,
@@ -124,7 +126,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
   const focusedIdx = focusedBlockId ? blocks.findIndex(b => b.id === focusedBlockId) : -1;
 
   return (
-    <div className="flex-1 overflow-hidden flex bg-neutral-950 w-full min-w-0">
+    <div className={`flex-1 overflow-hidden flex w-full min-w-0 ${light ? "bg-white" : "bg-neutral-950"}`}>
       <TocSidebar entries={tocEntries} tocOpen={tocOpen} />
       <div className="flex-1 overflow-y-auto w-full min-w-0">
         <div className="max-w-4xl mx-auto p-6 pb-32 w-full">
@@ -144,7 +146,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
             />
           ))}
           <div className="mt-8 flex justify-center opacity-50 hover:opacity-100 transition-opacity">
-            <button onClick={handleAddAtEnd} className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-full transition-colors border border-neutral-700">
+            <button onClick={handleAddAtEnd} className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors border ${light ? "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 hover:text-neutral-900 border-neutral-300" : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border-neutral-700"}`}>
               <Plus size={20} />
               <span className="text-sm font-medium">Ajouter un bloc</span>
             </button>

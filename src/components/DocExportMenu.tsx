@@ -11,6 +11,7 @@ import {
   HeadingLevel,
 } from "docx";
 import { saveAs } from "file-saver";
+import { useThemeStore } from "@/store/themeStore";
 
 interface DocExportMenuProps {
   title: string;
@@ -46,6 +47,7 @@ function htmlToPlainBlocks(html: string): { text: string; tag: string }[] {
 export default function DocExportMenu({ title, getContent }: DocExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const light = useThemeStore((s) => s.theme) === "light";
 
   const handleExportPDF = async () => {
     setExporting("pdf");
@@ -204,7 +206,7 @@ export default function DocExportMenu({ title, getContent }: DocExportMenuProps)
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-lg bg-neutral-800 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-neutral-700 transition-colors"
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${light ? "bg-neutral-200 text-neutral-600 hover:bg-neutral-300" : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"}`}
         title="Exporter"
       >
         <Download size={14} />
@@ -215,12 +217,12 @@ export default function DocExportMenu({ title, getContent }: DocExportMenuProps)
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl z-50 w-48 overflow-hidden">
+          <div className={`absolute right-0 top-full mt-1 border rounded-lg shadow-xl z-50 w-48 overflow-hidden ${light ? "bg-white border-neutral-300" : "bg-neutral-800 border-neutral-700"}`}>
             <div className="p-1">
               <button
                 onClick={handleExportPDF}
                 disabled={exporting !== null}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded disabled:opacity-50"
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded disabled:opacity-50 ${light ? "text-neutral-600 hover:bg-neutral-100" : "text-neutral-300 hover:bg-neutral-700"}`}
               >
                 {exporting === "pdf" ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -232,7 +234,7 @@ export default function DocExportMenu({ title, getContent }: DocExportMenuProps)
               <button
                 onClick={handleExportDOCX}
                 disabled={exporting !== null}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded disabled:opacity-50"
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded disabled:opacity-50 ${light ? "text-neutral-600 hover:bg-neutral-100" : "text-neutral-300 hover:bg-neutral-700"}`}
               >
                 {exporting === "docx" ? (
                   <Loader2 size={14} className="animate-spin" />

@@ -3,6 +3,7 @@ import { Search, Plus, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, Mic, MicOff
 import { DocBlock } from "../types";
 import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 import { useTTS } from "@/hooks/useTTS";
+import { useThemeStore } from "@/store/themeStore";
 
 interface SingleBlockProps {
   block: DocBlock;
@@ -30,6 +31,7 @@ export const SingleBlock = memo(function SingleBlock({
 }: SingleBlockProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const { state: ttsState, speak, stopPlayback } = useTTS();
+  const light = useThemeStore((s) => s.theme) === "light";
 
   const handleSpeak = useCallback(() => {
     if (ttsState === "playing" || ttsState === "loading") {
@@ -166,16 +168,20 @@ export const SingleBlock = memo(function SingleBlock({
     }
   };
 
+  const btnClass = light
+    ? "p-1.5 bg-neutral-200 text-neutral-500 hover:text-neutral-900 rounded-md"
+    : "p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md";
+
   return (
-    <div className="group relative w-full my-2 rounded-lg border border-transparent hover:border-neutral-700 transition-colors p-3">
+    <div className={`group relative w-full my-2 rounded-lg border border-transparent transition-colors p-3 ${light ? "hover:border-neutral-300" : "hover:border-neutral-700"}`}>
       <div className="absolute -left-10 top-3 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-        <button onClick={() => onFocusBlock(block.id)} title="Mode focus" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><Search size={16} /></button>
-        <button onClick={handleCopyBlock} title={copied ? "Copié !" : "Copier le contenu"} className={`p-1.5 rounded-md transition-all ${copied ? "bg-green-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}><Copy size={16} /></button>
-        <button onClick={() => onDelete?.(block.id)} title="Supprimer le bloc" className="p-1.5 bg-neutral-800 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-md transition-all"><X size={16} /></button>
-        <button onClick={() => onMoveToTop?.(block.id)} title="Déplacer tout en haut" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ChevronsUp size={16} /></button>
-        <button onClick={() => onMoveUp?.(block.id)} title="Déplacer vers le haut" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowUp size={16} /></button>
-        <button onClick={() => onMoveDown?.(block.id)} title="Déplacer vers le bas" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ArrowDown size={16} /></button>
-        <button onClick={() => onMoveToBottom?.(block.id)} title="Déplacer tout en bas" className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-md"><ChevronsDown size={16} /></button>
+        <button onClick={() => onFocusBlock(block.id)} title="Mode focus" className={btnClass}><Search size={16} /></button>
+        <button onClick={handleCopyBlock} title={copied ? "Copié !" : "Copier le contenu"} className={`p-1.5 rounded-md transition-all ${copied ? "bg-green-600 text-white" : light ? "bg-neutral-200 text-neutral-500 hover:text-neutral-900" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}><Copy size={16} /></button>
+        <button onClick={() => onDelete?.(block.id)} title="Supprimer le bloc" className={`p-1.5 rounded-md transition-all ${light ? "bg-neutral-200 text-red-500 hover:text-red-600 hover:bg-red-100" : "bg-neutral-800 text-red-400 hover:text-red-300 hover:bg-red-900/30"}`}><X size={16} /></button>
+        <button onClick={() => onMoveToTop?.(block.id)} title="Déplacer tout en haut" className={btnClass}><ChevronsUp size={16} /></button>
+        <button onClick={() => onMoveUp?.(block.id)} title="Déplacer vers le haut" className={btnClass}><ArrowUp size={16} /></button>
+        <button onClick={() => onMoveDown?.(block.id)} title="Déplacer vers le bas" className={btnClass}><ArrowDown size={16} /></button>
+        <button onClick={() => onMoveToBottom?.(block.id)} title="Déplacer tout en bas" className={btnClass}><ChevronsDown size={16} /></button>
         <button
           onClick={toggleDictation}
           title={dictState === "recording" ? "Arrêter la dictée" : "Dictée vocale"}
@@ -184,7 +190,7 @@ export const SingleBlock = memo(function SingleBlock({
               ? "bg-red-600 text-white animate-pulse"
               : dictState === "connecting"
               ? "bg-yellow-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:text-white"
+              : btnClass
           }`}
         >
           {dictState === "connecting" ? <Loader2 size={16} className="animate-spin" /> : dictState === "recording" ? <MicOff size={16} /> : <Mic size={16} />}
@@ -197,7 +203,7 @@ export const SingleBlock = memo(function SingleBlock({
               ? "bg-green-600 text-white animate-pulse"
               : ttsState === "loading"
               ? "bg-yellow-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:text-white"
+              : btnClass
           }`}
         >
           {ttsState === "loading" ? <Loader2 size={16} className="animate-spin" /> : ttsState === "playing" ? <Square size={14} /> : <Volume2 size={16} />}
@@ -207,13 +213,17 @@ export const SingleBlock = memo(function SingleBlock({
         ref={editorRef} contentEditable suppressContentEditableWarning
         onInput={handleInput}
         onBlur={handleBlur} onKeyDown={handleKeyDown}
-        className="block-editor-content w-full text-white outline-none min-h-[1.5rem] whitespace-pre-wrap
+        className={`block-editor-content w-full outline-none min-h-[1.5rem] whitespace-pre-wrap
           [&_h1]:text-3xl [&_h1]:font-bold [&_p]:mb-3
           [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-3 [&_ul_li]:mb-1
           [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-3 [&_ol_li]:mb-1
-          [&_pre]:bg-[#1e1e2e] [&_pre]:border [&_pre]:border-neutral-700 [&_pre]:border-l-4 [&_pre]:border-l-blue-500
+          [&_pre]:border [&_pre]:border-l-4 [&_pre]:border-l-blue-500
           [&_pre]:p-4 [&_pre]:pl-5 [&_pre]:rounded-lg [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed
-          [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30 [&_pre]:my-3 [&_pre]:overflow-x-auto"
+          [&_pre]:my-3 [&_pre]:overflow-x-auto
+          ${light
+            ? "text-neutral-900 [&_pre]:bg-neutral-100 [&_pre]:border-neutral-300 [&_pre]:text-neutral-800 [&_pre]:shadow-sm"
+            : "text-white [&_pre]:bg-[#1e1e2e] [&_pre]:border-neutral-700 [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30"
+          }`}
       />
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 z-10">
         <button onClick={() => onAddBelow(block.id)} className="p-1.5 bg-blue-600 text-white rounded-full shadow-lg"><Plus size={16} /></button>
