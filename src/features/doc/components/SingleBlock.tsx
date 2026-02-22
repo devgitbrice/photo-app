@@ -179,7 +179,7 @@ export const SingleBlock = memo(function SingleBlock({
 
   return (
     <div className={`group relative w-full my-2 rounded-lg border border-transparent transition-colors p-3 ${light ? "hover:border-neutral-300" : "hover:border-neutral-700"}`}>
-      <div className="absolute -left-10 top-3 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+      <div className="absolute -left-10 top-3 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col gap-1">
         <button onClick={() => onFocusBlock(block.id)} title="Mode focus" className={btnClass}><Search size={16} /></button>
         <button onClick={handleCopyBlock} title={copied ? "Copié !" : "Copier le contenu"} className={`p-1.5 rounded-md transition-all ${copied ? "bg-green-600 text-white" : light ? "bg-neutral-200 text-neutral-500 hover:text-neutral-900" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}><Copy size={16} /></button>
         <button onClick={() => onDelete?.(block.id)} title="Supprimer le bloc" className={`p-1.5 rounded-md transition-all ${light ? "bg-neutral-200 text-red-500 hover:text-red-600 hover:bg-red-100" : "bg-neutral-800 text-red-400 hover:text-red-300 hover:bg-red-900/30"}`}><X size={16} /></button>
@@ -230,7 +230,7 @@ export const SingleBlock = memo(function SingleBlock({
             : "dark-editor-override text-white [&_pre]:bg-[#1e1e2e] [&_pre]:border-neutral-700 [&_pre]:text-[#a6e3a1] [&_pre]:shadow-lg [&_pre]:shadow-black/30"
           }`}
       />
-      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 z-10">
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 z-10">
         <button onClick={() => onAddBelow(block.id)} className="p-1.5 bg-blue-600 text-white rounded-full shadow-lg"><Plus size={16} /></button>
       </div>
     </div>
