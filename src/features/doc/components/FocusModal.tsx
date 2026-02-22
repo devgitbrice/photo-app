@@ -258,6 +258,46 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     };
   }, [hasNext, hasPrev, handleNav]);
 
+  // Touch swipe navigation (iPad) — one swipe = one block
+  useEffect(() => {
+    let touchStartX: number | null = null;
+    let touchStartY: number | null = null;
+    let swiped = false;
+    const SWIPE_THRESHOLD = 50;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      swiped = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartX === null || touchStartY === null || swiped) return;
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      // Only trigger on horizontal swipes
+      if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+      swiped = true;
+      if (dx < 0 && hasNext) handleNav("next");
+      else if (dx > 0 && hasPrev) handleNav("prev");
+    };
+
+    const onTouchEnd = () => {
+      touchStartX = null;
+      touchStartY = null;
+      swiped = false;
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [hasNext, hasPrev, handleNav]);
+
   const linkifyNode = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
       const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+|[a-zA-Z0-9.-]+\.[a-z]{2,10}[^\s<]*)/gi;
