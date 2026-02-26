@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight, Play, FastForward, Copy, Check } from "lucide-react";
+import { List, ListOrdered, Volume2, Square, Loader2, ChevronLeft, ChevronRight, Play, FastForward, Copy, Check, Bold, Italic, Underline, Strikethrough, Plus } from "lucide-react";
 import { DocBlock } from "../types";
 import { useTTS } from "@/hooks/useTTS";
 import { useThemeStore } from "@/store/themeStore";
@@ -13,6 +13,7 @@ interface FocusModalProps {
   onClose: () => void;
   onNext?: () => void;
   onPrev?: () => void;
+  onAddBelow?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
 }
@@ -36,7 +37,7 @@ const TEXT_COLORS = [
   { label: "Rose", value: "#ec4899" },
 ];
 
-export default function FocusModal({ block, onChange, onClose, onNext, onPrev, hasPrev, hasNext }: FocusModalProps) {
+export default function FocusModal({ block, onChange, onClose, onNext, onPrev, onAddBelow, hasPrev, hasNext }: FocusModalProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const { state: ttsState, speak, stopPlayback } = useTTS();
   const [autoMode, setAutoMode] = useState<AutoMode>("off");
@@ -361,6 +362,14 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
     }
   };
 
+  const handleAddBlock = useCallback(() => {
+    if (editorRef.current) {
+      const html = stripCopyButtons(editorRef.current.innerHTML);
+      onChange(block.id, html);
+    }
+    onAddBelow?.();
+  }, [block.id, onChange, onAddBelow]);
+
   const toolbarBtnClass = light
     ? "p-2 bg-neutral-200 text-neutral-600 hover:text-neutral-900 rounded-md transition-colors"
     : "p-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-md transition-colors";
@@ -404,7 +413,45 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
         </div>
 
         {/* Toolbar */}
-        <div className={`mb-4 flex items-center gap-2 border-b pb-3 ${light ? "border-neutral-300" : "border-neutral-800"}`}>
+        <div className={`mb-4 flex items-center gap-2 border-b pb-3 flex-wrap ${light ? "border-neutral-300" : "border-neutral-800"}`}>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); execCmd("bold"); }}
+            title="Gras (⌘B)"
+            className={toolbarBtnClass}
+          >
+            <Bold size={16} />
+          </button>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); execCmd("italic"); }}
+            title="Italique (⌘I)"
+            className={toolbarBtnClass}
+          >
+            <Italic size={16} />
+          </button>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); execCmd("underline"); }}
+            title="Souligné (⌘U)"
+            className={toolbarBtnClass}
+          >
+            <Underline size={16} />
+          </button>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); execCmd("strikeThrough"); }}
+            title="Barré"
+            className={toolbarBtnClass}
+          >
+            <Strikethrough size={16} />
+          </button>
+          <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
+          <label title="Couleur du texte" className={`cursor-pointer flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors ${light ? "bg-neutral-200 hover:bg-neutral-300" : "bg-neutral-800 hover:bg-neutral-700"}`}>
+            <span className={`text-xs font-bold ${light ? "text-neutral-600" : "text-neutral-400"}`}>A</span>
+            <input type="color" defaultValue={light ? "#000000" : "#ffffff"} onMouseDown={(e) => e.preventDefault()} onChange={(e) => execCmd("foreColor", e.target.value)} className="w-4 h-4 border-0 bg-transparent cursor-pointer" />
+          </label>
+          <label title="Surligner" className={`cursor-pointer flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors ${light ? "bg-neutral-200 hover:bg-neutral-300" : "bg-neutral-800 hover:bg-neutral-700"}`}>
+            <span className="text-[10px] font-bold text-neutral-900 bg-yellow-400 px-1 rounded">A</span>
+            <input type="color" defaultValue="#facc15" onMouseDown={(e) => e.preventDefault()} onChange={(e) => execCmd("hiliteColor", e.target.value)} className="w-4 h-4 border-0 bg-transparent cursor-pointer" />
+          </label>
+          <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
           <button
             onClick={() => handleInsertList(false)}
             title="Liste à puces"
@@ -470,6 +517,14 @@ export default function FocusModal({ block, onChange, onClose, onNext, onPrev, h
           >
             <FastForward size={14} />
             SUPER AUTO
+          </button>
+          <div className={`w-px h-6 mx-1 ${light ? "bg-neutral-300" : "bg-neutral-700"}`} />
+          <button
+            onClick={handleAddBlock}
+            title="Ajouter un bloc après celui-ci"
+            className={`flex items-center justify-center w-8 h-8 rounded-md transition-all text-sm font-bold ${light ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-green-900/30 text-green-400 hover:bg-green-800/40"}`}
+          >
+            <Plus size={16} />
           </button>
         </div>
 
