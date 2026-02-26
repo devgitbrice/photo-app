@@ -7,6 +7,7 @@
  *   Cmd+I  → italic
  *   Cmd+U  → underline
  *   Cmd+J  → highlight yellow
+ *   Cmd+T  → highlight yellow (background)
  *   Cmd+A  → select all
  *   Cmd+Z  → undo
  *   Alt+Cmd+& / Alt+Cmd+1 → H1
@@ -45,6 +46,12 @@ export function handleDocShortcut(e: KeyboardEvent | React.KeyboardEvent): boole
     }
     // Cmd+J → surligner en jaune
     if (key === "j") {
+      e.preventDefault();
+      document.execCommand("hiliteColor", false, "#eab308");
+      return true;
+    }
+    // Cmd+T → surligner en jaune (fond du texte)
+    if (key === "t") {
       e.preventDefault();
       document.execCommand("hiliteColor", false, "#eab308");
       return true;
