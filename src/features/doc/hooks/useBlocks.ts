@@ -132,6 +132,21 @@ export function useBlocks(initialHtml: string, onTriggerSave: () => void) {
     setTimeout(onTriggerSave, 100);
   }, [onTriggerSave]);
 
+  const handleAddBelowAndFocus = useCallback((id: string) => {
+    const newId = crypto.randomUUID();
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id);
+      if (idx === -1) return prev;
+      const nb = { id: newId, html: "<p><br></p>" };
+      htmlRefs.current[nb.id] = nb.html;
+      const arr = [...prev];
+      arr.splice(idx + 1, 0, nb);
+      return arr;
+    });
+    setFocusedBlockId(newId);
+    setTimeout(onTriggerSave, 100);
+  }, [onTriggerSave]);
+
   const handleFocusNext = useCallback(() => {
     setFocusedBlockId(prev => {
       if (!prev) return prev;
@@ -150,5 +165,5 @@ export function useBlocks(initialHtml: string, onTriggerSave: () => void) {
     });
   }, [blocks]);
 
-  return { blocks, focusedBlockId, setFocusedBlockId, htmlRefs, handleHtmlChange, handleFocusChange, handleAddBelow, handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit, handleDelete, handleFocusNext, handleFocusPrev };
+  return { blocks, focusedBlockId, setFocusedBlockId, htmlRefs, handleHtmlChange, handleFocusChange, handleAddBelow, handleAddBelowAndFocus, handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit, handleDelete, handleFocusNext, handleFocusPrev };
 }

@@ -21,7 +21,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
 
   const {
     blocks, focusedBlockId, setFocusedBlockId, htmlRefs,
-    handleHtmlChange, handleFocusChange, handleAddBelow,
+    handleHtmlChange, handleFocusChange, handleAddBelow, handleAddBelowAndFocus,
     handleAddAtEnd, handleMoveUp, handleMoveDown, handleMoveToTop, handleMoveToBottom, handleSplit,
     handleDelete, handleFocusNext, handleFocusPrev
   } = useBlocks(initialHtml, () => saveRef.current());
@@ -158,6 +158,7 @@ export default function BlockManager({ initialHtml, tocOpen, onChange }: BlockMa
               onClose={() => setFocusedBlockId(null)}
               onPrev={handleFocusPrev}
               onNext={handleFocusNext}
+              onAddBelow={() => focusedBlockId && handleAddBelowAndFocus(focusedBlockId)}
               hasPrev={focusedIdx > 0}
               hasNext={focusedIdx < blocks.length - 1}
             />
